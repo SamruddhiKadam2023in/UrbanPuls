@@ -33,7 +33,7 @@ export default function Login() {
 
   const WHO = [
     { icon: '🚗', title: t('who.user_title', 'Drivers'), text: t('who.user_text', 'Create a free account and start reserving parking.'), link: '/register', cta: t('who.user_cta', 'Sign up') },
-    { icon: '🏢', title: t('who.vendor_title', 'Parking owners'), text: t('who.vendor_text', 'Sign up and choose "Parking vendor". An administrator approves your account, then you can add your zones.'), link: '/register', cta: t('who.vendor_cta', 'Apply') },
+    { icon: '🏢', title: t('who.vendor_title', 'Parking Partners'), text: t('who.vendor_text', 'Own or run a parking lot? Sign up and choose "Parking Partner". Once an administrator approves you, add your lots and start taking bookings.'), link: '/register', cta: t('who.vendor_cta', 'Become a partner') },
     { icon: '🚓', title: t('who.police_title', 'Police'), text: t('who.police_text', 'Your account is created by the TPMS administrator. Sign in above with the email and password they gave you.') },
     { icon: '🛡', title: t('who.admin_title', 'Administrators'), text: t('who.admin_text', 'Accounts are set up by the operator of this service. Sign in above.') },
   ]

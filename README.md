@@ -1,13 +1,13 @@
 # 🅿 TPMS — Traffic & Parking Management System
 
-Parking reservations with **pay at the gate**, a vendor gate screen with QR check-in, citizen complaints with reward points, traffic insights and emergency calling. Built for Mumbai.
+Parking reservations with **pay at the gate**, a gate screen for Parking Partners with QR check-in, citizen complaints with reward points, traffic insights and emergency calling. Built for Mumbai.
 
 ## How parking works
 
 1. **Reserve.** The user picks a zone, a time window and a free slot. Nothing is paid online. The user gets a booking code and QR code.
 2. **Arrive.** Check-in opens 30 minutes before the start time. If the car hasn't arrived 15 minutes after the start time, the booking becomes a **no-show** and the slot is released.
-3. **Check in at the gate.** The vendor scans the QR code, or types the code or vehicle number, on the **Gate** screen.
-4. **Check out and pay.** The fare is worked out from the actual time parked (minimum 1 hour, then 30-minute steps), minus any reward points the user chose to spend. The customer pays cash or scans the zone's UPI QR code. The vendor records the payment and a PDF receipt is created.
+3. **Check in at the gate.** The Parking Partner scans the QR code, or types the code or vehicle number, on the **Gate** screen.
+4. **Check out and pay.** The fare is worked out from the actual time parked (minimum 1 hour, then 30-minute steps), minus any reward points the user chose to spend. The customer pays cash or scans the zone's UPI QR code. The Parking Partner records the payment and a PDF receipt is created.
 
 Walk-in cars without a booking can be checked in straight from the Gate screen.
 
@@ -15,19 +15,22 @@ Walk-in cars without a booking can be checked in straight from the Gate screen.
 
 ## Roles
 
+Parking lot owners and operators are called **Parking Partners** in the app. In the code and database the role is still named `vendor`.
+
+
 | Role | Can do | Pages |
 |------|--------|-------|
 | User | Reserve, extend and cancel bookings; rate visits; report complaints; earn points | Map, Bookings, Complaints, Notifications |
-| Vendor | Everything a user can, plus manage their own zones and slots, check cars in and out, see reports. Vendor sign-ups need admin approval | + Gate, Zones, Analytics, Dashboard |
+| Parking Partner | Owns or runs parking lots. Everything a user can, plus manage their own lots and slots, check cars in and out, record payments, see reports. Sign-ups need admin approval | + Gate, Zones, Analytics, Dashboard |
 | Police | Resolve verified complaints on a map, download fines, use violation detection | + Enforcement, Detection |
-| Admin | Everything: manage users and roles, approve vendors, create staff accounts, verify complaints | + Admin |
+| Admin | Everything: manage users and roles, approve Parking Partners, create staff accounts, verify complaints | + Admin |
 
 ## Live updates and notifications
 
 The browser keeps one WebSocket open (`/api/live/ws`). Through it:
 - users get notifications (booking confirmed, checked in, receipt, reminder 30 minutes before start, no-show, complaint updates)
 - maps, the Gate screen and the Zones page refresh when availability changes
-- vendors, police and admins get violation alerts
+- Parking Partners, police and admins get violation alerts
 
 Notifications are also stored (bell icon) and the important ones are emailed. They are written in each user's chosen language.
 
@@ -83,7 +86,7 @@ Development uses SQLite by default. Emails (verification and password reset link
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@tpms.com | admin123 |
-| Vendor | vendor@tpms.com | vendor123 |
+| Parking Partner | vendor@tpms.com | vendor123 |
 | User | user@tpms.com | user123 |
 | Police | police@tpms.com | police123 |
 
@@ -135,7 +138,7 @@ All settings are environment variables. See `backend/.env.example` for the full 
 | `CLOUDINARY_*` | Optional cloud storage for complaint photos (local disk otherwise) |
 | `TWILIO_*` | Optional SMS to police (skipped when empty) |
 
-Each parking zone can have a `upi_id` (e.g. `parking@okicici`). At checkout the Gate screen shows a UPI QR code for the exact amount, which pays the vendor directly.
+Each parking zone can have a `upi_id` (e.g. `parking@okicici`). At checkout the Gate screen shows a UPI QR code for the exact amount, which pays the Parking Partner directly.
 
 ## Docker
 

@@ -10,7 +10,7 @@ import { fmtDateTime } from '../utils/format'
 const TYPES = ['illegal_parking', 'road_blockage', 'signal_malfunction', 'accident', 'vendor_issue']
 const TYPE_DEFAULTS = {
   illegal_parking: '🚫 Illegal parking', road_blockage: '🚧 Road blockage', signal_malfunction: '🚦 Signal malfunction',
-  accident: '💥 Accident', vendor_issue: '🏢 Vendor issue',
+  accident: '💥 Accident', vendor_issue: '🏢 Parking Partner issue',
 }
 
 const STATUS_BADGE = {

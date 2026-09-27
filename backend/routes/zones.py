@@ -75,7 +75,7 @@ def get_owned_zone(db: Session, zone_id: int, user: User) -> ParkingZone:
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
     if user.role != UserRole.admin and zone.vendor_id != user.id:
-        raise HTTPException(status_code=403, detail="This zone belongs to another vendor")
+        raise HTTPException(status_code=403, detail="This zone belongs to another Parking Partner")
     return zone
 
 def _add_slots(db: Session, zone: ParkingZone, count: int) -> None:
@@ -154,7 +154,7 @@ def create_zone(data: ZoneCreate, db: Session = Depends(get_db), user: User = De
     if user.role == UserRole.admin and data.vendor_id is not None:
         vendor = db.get(User, data.vendor_id)
         if not vendor or vendor.role != UserRole.vendor:
-            raise HTTPException(status_code=400, detail="vendor_id must belong to a vendor account")
+            raise HTTPException(status_code=400, detail="vendor_id must belong to a Parking Partner account")
         vendor_id = vendor.id
     zone = ParkingZone(**data.model_dump(exclude={"vendor_id", "total_slots"}), vendor_id=vendor_id, total_slots=0)
     db.add(zone)

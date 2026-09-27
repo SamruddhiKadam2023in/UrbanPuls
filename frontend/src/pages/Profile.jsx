@@ -185,7 +185,7 @@ export default function Profile() {
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <span className={`badge ${rc.badge}`}>{rc.emoji} {rc.label}</span>
             {user.points > 0 && <span className="badge badge-purple">⭐ {user.points} {t('profile.points')}</span>}
-            {user.vendor_requested && <span className="badge badge-yellow">{t('profile.vendor_pending', 'Vendor request pending')}</span>}
+            {user.vendor_requested && <span className="badge badge-yellow">{t('profile.vendor_pending', 'Partner request pending')}</span>}
           </div>
           <p style={{ ...hint, marginTop: '10px' }}>{t('profile.role_hint', 'Your role is set by an administrator.')}</p>
         </div>

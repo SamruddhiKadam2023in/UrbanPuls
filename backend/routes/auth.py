@@ -81,7 +81,7 @@ def register(request: Request, req: RegisterRequest, background: BackgroundTasks
     background.add_task(send_verification_email, user)
     msg = "Account created. Check your email to verify your address."
     if user.vendor_requested:
-        msg += " Your vendor account request will be reviewed by an administrator."
+        msg += " An administrator will review your request to become a Parking Partner."
     return {"message": msg, "user": UserOut.model_validate(user)}
 
 @router.post("/login")

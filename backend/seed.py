@@ -28,7 +28,7 @@ if settings.is_production:
 DEMO_USERS = [
     # name, email, password, role, points
     ("Admin User",   "admin@tpms.com",  "admin123",  UserRole.admin,  0),
-    ("Vendor One",   "vendor@tpms.com", "vendor123", UserRole.vendor, 0),
+    ("Partner One",  "vendor@tpms.com", "vendor123", UserRole.vendor, 0),
     ("Test User",    "user@tpms.com",   "user123",   UserRole.user,   50),
     ("Police Desk",  "police@tpms.com", "police123", UserRole.police, 0),
 ]

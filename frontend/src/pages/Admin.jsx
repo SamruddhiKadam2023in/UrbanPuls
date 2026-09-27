@@ -72,13 +72,13 @@ export default function Admin() {
     } catch (e) { toast.error(errorMessage(e)) }
   }
 
-  const tabs = [['users', `👥 ${t('admin.users', 'Users')}`], ['requests', `🏢 ${t('admin.requests', 'Vendor requests')} (${requests.length})`], ['create', `➕ ${t('admin.create_staff', 'Create staff account')}`]]
+  const tabs = [['users', `👥 ${t('admin.users', 'Users')}`], ['requests', `🏢 ${t('admin.requests', 'Partner requests')} (${requests.length})`], ['create', `➕ ${t('admin.create_staff', 'Create staff account')}`]]
 
   return (
     <div className="page-wrap fade-in">
       <div className="page-header">
         <h1 className="section-header" style={{ fontSize: '26px' }}>🛡 {t('admin.title', 'Administration')}</h1>
-        <p className="section-sub">{t('admin.subtitle', 'Accounts, roles and vendor approvals')}</p>
+        <p className="section-sub">{t('admin.subtitle', 'Accounts, roles and Parking Partner approvals')}</p>
       </div>
 
       <div style={{ display: 'flex', gap: '4px', background: 'var(--c-bg2)', padding: '4px', borderRadius: '12px', marginBottom: '20px', width: 'fit-content', flexWrap: 'wrap' }}>
@@ -119,7 +119,7 @@ export default function Admin() {
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span className={`badge ${u.is_active ? 'badge-green' : 'badge-red'}`}>{u.is_active ? t('admin.active', 'Active') : t('admin.disabled', 'Disabled')}</span>
-                      {u.vendor_requested && <span className="badge badge-yellow" style={{ marginLeft: '6px' }}>{t('admin.wants_vendor', 'Wants vendor')}</span>}
+                      {u.vendor_requested && <span className="badge badge-yellow" style={{ marginLeft: '6px' }}>{t('admin.wants_vendor', 'Wants to be a partner')}</span>}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--c-text3)', fontSize: '12px' }}>{fmtDateTime(u.created_at)}</td>
                     <td style={{ padding: '12px 14px', textAlign: 'right' }}>
@@ -142,7 +142,7 @@ export default function Admin() {
 
       {tab === 'requests' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {requests.length === 0 && <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--c-text2)' }}>{t('admin.no_requests', 'No vendor requests waiting.')}</div>}
+          {requests.length === 0 && <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--c-text2)' }}>{t('admin.no_requests', 'No Parking Partner requests waiting.')}</div>}
           {requests.map(u => (
             <div key={u.id} className="card" style={{ padding: '18px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
@@ -150,7 +150,7 @@ export default function Admin() {
                 <div style={{ fontSize: '12px', color: 'var(--c-text2)' }}>{u.email}{u.phone ? ` · ${u.phone}` : ''}</div>
                 {!u.email_verified && <span className="badge badge-yellow" style={{ marginTop: '6px' }}>{t('admin.email_unverified', 'Email not verified')}</span>}
               </div>
-              <button onClick={() => update(u, { role: 'vendor' }, t('admin.approved', '{{name}} is now a vendor', { name: u.name }))} className="btn btn-accent btn-sm">{t('admin.approve', 'Approve')}</button>
+              <button onClick={() => update(u, { role: 'vendor' }, t('admin.approved', '{{name}} is now a Parking Partner', { name: u.name }))} className="btn btn-accent btn-sm">{t('admin.approve', 'Approve')}</button>
               <button onClick={() => update(u, { vendor_requested: false }, t('admin.declined', 'Request declined'))} className="btn btn-ghost btn-sm">{t('admin.decline', 'Decline')}</button>
             </div>
           ))}

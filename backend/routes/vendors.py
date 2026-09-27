@@ -125,7 +125,7 @@ def revenue_report(period: Literal["day", "week", "month"] = "day",
     if zone_id is not None:
         if user.role != UserRole.admin and not db.query(ParkingZone.id).filter(
                 ParkingZone.id == zone_id, ParkingZone.vendor_id == user.id).first():
-            raise HTTPException(status_code=403, detail="This zone belongs to another vendor")
+            raise HTTPException(status_code=403, detail="This zone belongs to another Parking Partner")
         q = q.filter(Booking.zone_id == zone_id)
 
     rows: dict[date, dict] = {}

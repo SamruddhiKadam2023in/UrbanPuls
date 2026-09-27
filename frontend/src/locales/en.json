@@ -3,7 +3,7 @@
     "active": "Active",
     "all_roles": "All roles",
     "approve": "Approve",
-    "approved": "{{name}} is now a vendor",
+    "approved": "{{name}} is now a Parking Partner",
     "col_joined": "Joined",
     "col_status": "Status",
     "col_user": "User",
@@ -18,13 +18,13 @@
     "disabled": "Disabled",
     "email_unverified": "Email not verified",
     "enable": "Enable",
-    "no_requests": "No vendor requests waiting.",
+    "no_requests": "No Parking Partner requests waiting.",
     "no_users": "No users found",
-    "requests": "Vendor requests",
+    "requests": "Partner requests",
     "role": "Role",
     "role_changed": "Role updated",
     "search": "Search name or email",
-    "subtitle": "Accounts, roles and vendor approvals",
+    "subtitle": "Accounts, roles and Parking Partner approvals",
     "temp_password": "Temporary password",
     "temp_password_hint": "They can change it with \"Forgot password\".",
     "title": "Administration",
@@ -32,7 +32,7 @@
     "user_disabled": "Account disabled",
     "user_enabled": "Account enabled",
     "users": "Users",
-    "wants_vendor": "Wants vendor"
+    "wants_vendor": "Wants to be a partner"
   },
   "analytics": {
     "bookings": "Bookings",
@@ -87,8 +87,8 @@
     "signing_in": "Signing in...",
     "update_password": "Update password",
     "user_role": "🚗 Regular User",
-    "vendor_hint": "You can use the app as a regular user until an administrator approves your vendor account.",
-    "vendor_role": "🏢 Parking Vendor",
+    "vendor_hint": "You can use the app as a regular user until an administrator approves you as a Parking Partner.",
+    "vendor_role": "🏢 Parking Partner",
     "verified": "Your email address is verified.",
     "verify_retry": "Sign in and use \"Resend email\" to get a new link.",
     "verify_title": "Email verification",
@@ -216,7 +216,7 @@
       "illegal_parking": "🚫 Illegal parking",
       "road_blockage": "🚧 Road blockage",
       "signal_malfunction": "🚦 Signal malfunction",
-      "vendor_issue": "🏢 Vendor issue"
+      "vendor_issue": "🏢 Parking Partner issue"
     },
     "upload": "Click to upload photo/video"
   },
@@ -443,11 +443,11 @@
     "roles": {
       "admin": "Administrator",
       "user": "Regular User",
-      "vendor": "Parking Vendor"
+      "vendor": "Parking Partner"
     },
     "saved": "Details saved",
     "title": "Account Details",
-    "vendor_pending": "Vendor request pending",
+    "vendor_pending": "Partner request pending",
     "verified": "Verified"
   },
   "report": {
@@ -475,7 +475,7 @@
     "admin": "Admin",
     "police": "Police",
     "user": "User",
-    "vendor": "Vendor"
+    "vendor": "Parking Partner"
   },
   "status": {
     "cancelled": "Cancelled",
@@ -498,9 +498,9 @@
     "user_cta": "Sign up",
     "user_text": "Create a free account and start reserving parking.",
     "user_title": "Drivers",
-    "vendor_cta": "Apply",
-    "vendor_text": "Sign up and choose \"Parking vendor\". An administrator approves your account, then you can add your zones.",
-    "vendor_title": "Parking owners"
+    "vendor_cta": "Become a partner",
+    "vendor_text": "Own or run a parking lot? Sign up and choose \"Parking Partner\". Once an administrator approves you, add your lots and start taking bookings.",
+    "vendor_title": "Parking Partners"
   },
   "zones": {
     "add": "Add parking zone",

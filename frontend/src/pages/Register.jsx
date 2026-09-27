@@ -47,7 +47,7 @@ export default function Register() {
           </select>
           {form.account_type === 'vendor' && (
             <p style={{ fontSize: '11px', color: 'var(--c-text3)', marginTop: '4px' }}>
-              {t('auth.vendor_hint', 'You can use the app as a regular user until an administrator approves your vendor account.')}
+              {t('auth.vendor_hint', 'You can use the app as a regular user until an administrator approves you as a Parking Partner.')}
             </p>
           )}
         </div>

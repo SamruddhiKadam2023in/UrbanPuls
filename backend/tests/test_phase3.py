@@ -180,7 +180,7 @@ def test_admin_search_and_vendor_approval_notifies(client, db):
     assert [u["email"] for u in found] == ["shopkeeper@test.com"]
     client.patch(f"/api/admin/users/{shop.id}", headers=ha, json={"role": "vendor"})
     hs = auth(client, "shopkeeper@test.com")
-    assert client.get("/api/notifications/", headers=hs).json()["items"][0]["title"] == "Vendor account approved"
+    assert client.get("/api/notifications/", headers=hs).json()["items"][0]["title"] == "Welcome, Parking Partner"
 
 # ── Notification language ─────────────────────────────────────────────────────
 def test_message_catalog_placeholders_match():

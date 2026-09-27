@@ -82,14 +82,14 @@ MESSAGES: dict[str, dict[str, tuple[str, str]]] = {
         "mr": ("", " टीप: {note}"),
     },
     "vendor_approved": {
-        "en": ("Vendor account approved", "You can now add your parking zones and use the Gate screen."),
-        "hi": ("विक्रेता खाता मंज़ूर", "अब आप अपने पार्किंग क्षेत्र जोड़ सकते हैं और गेट स्क्रीन इस्तेमाल कर सकते हैं।"),
-        "mr": ("विक्रेता खाते मंजूर", "आता तुम्ही तुमची पार्किंग क्षेत्रे जोडू शकता आणि गेट स्क्रीन वापरू शकता."),
+        "en": ("Welcome, Parking Partner", "You're approved as a Parking Partner. Add your parking lots and start using the Gate screen."),
+        "hi": ("पार्किंग पार्टनर के रूप में स्वागत है", "आपको पार्किंग पार्टनर के रूप में मंज़ूरी मिल गई है। अपने पार्किंग स्थल जोड़ें और गेट स्क्रीन इस्तेमाल करना शुरू करें।"),
+        "mr": ("पार्किंग पार्टनर म्हणून स्वागत", "तुम्हाला पार्किंग पार्टनर म्हणून मंजुरी मिळाली आहे. तुमची पार्किंग स्थळे जोडा आणि गेट स्क्रीन वापरायला सुरुवात करा."),
     },
     "vendor_declined": {
-        "en": ("Vendor request declined", "Your request for a vendor account was not approved. Contact support if you think this is a mistake."),
-        "hi": ("विक्रेता अनुरोध अस्वीकार", "आपका विक्रेता खाते का अनुरोध मंज़ूर नहीं हुआ। अगर यह गलती लगे तो सहायता से संपर्क करें।"),
-        "mr": ("विक्रेता विनंती नाकारली", "तुमची विक्रेता खात्याची विनंती मंजूर झाली नाही. ही चूक वाटल्यास मदत विभागाशी संपर्क करा."),
+        "en": ("Parking Partner request declined", "Your request to become a Parking Partner was not approved. Contact support if you think this is a mistake."),
+        "hi": ("पार्किंग पार्टनर अनुरोध अस्वीकार", "पार्किंग पार्टनर बनने का आपका अनुरोध मंज़ूर नहीं हुआ। अगर यह गलती लगे तो सहायता से संपर्क करें।"),
+        "mr": ("पार्किंग पार्टनर विनंती नाकारली", "पार्किंग पार्टनर होण्याची तुमची विनंती मंजूर झाली नाही. ही चूक वाटल्यास मदत विभागाशी संपर्क करा."),
     },
 }
 
@@ -98,7 +98,7 @@ COMPLAINT_TYPES = {
     "road_blockage":      {"en": "road blockage",      "hi": "सड़क अवरोध",    "mr": "रस्ता अडथळा"},
     "signal_malfunction": {"en": "signal malfunction", "hi": "सिग्नल खराबी",  "mr": "सिग्नल बिघाड"},
     "accident":           {"en": "accident",           "hi": "दुर्घटना",       "mr": "अपघात"},
-    "vendor_issue":       {"en": "vendor issue",       "hi": "विक्रेता समस्या", "mr": "विक्रेता समस्या"},
+    "vendor_issue":       {"en": "Parking Partner issue", "hi": "पार्किंग पार्टनर से जुड़ी समस्या", "mr": "पार्किंग पार्टनरशी संबंधित समस्या"},
 }
 
 EMAIL_GREETING = {"en": "Hi {name},", "hi": "नमस्ते {name},", "mr": "नमस्कार {name},"}
