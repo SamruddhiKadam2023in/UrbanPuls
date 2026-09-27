@@ -13,25 +13,31 @@ from sqlalchemy import text
 from core.config import settings
 from core.database import SessionLocal
 from core.ratelimit import limiter
-from routes import admin, alerts, auth, bookings, complaints, detection, gate, traffic, vendors, zones
-from services.booking_service import expire_no_shows
+from routes import (admin, alerts, auth, bookings, complaints, detection, gate, live, notifications,
+                    traffic, vendors, zones)
+from services.booking_service import expire_no_shows, send_reminders
+from services.live import hub
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("tpms")
 
-async def no_show_loop():
-    """Frees reservations whose car never arrived. Runs in every worker; the update is idempotent."""
-    while True:
+def run_booking_jobs() -> None:
+    for job in (send_reminders, expire_no_shows):
+        db = SessionLocal()
         try:
-            db = SessionLocal()
-            try:
-                expired = await asyncio.to_thread(expire_no_shows, db)
-                if expired:
-                    log.info("Marked %d reservation(s) as no-show", len(expired))
-            finally:
-                db.close()
+            done = job(db)
+            if done:
+                log.info("%s: %d booking(s)", job.__name__, len(done))
         except Exception:
-            log.exception("No-show job failed")
+            db.rollback()
+            log.exception("%s failed", job.__name__)
+        finally:
+            db.close()
+
+async def booking_jobs_loop():
+    """Reminders and no-show release. Runs in every worker; SKIP LOCKED keeps them from colliding."""
+    while True:
+        await asyncio.to_thread(run_booking_jobs)
         await asyncio.sleep(settings.SCHEDULER_INTERVAL_SECONDS)
 
 @asynccontextmanager
@@ -39,7 +45,8 @@ async def lifespan(app: FastAPI):
     # The schema is managed by Alembic: run `alembic upgrade head` before starting the app
     for d in (settings.receipts_dir, settings.fines_dir, settings.uploads_dir):
         d.mkdir(parents=True, exist_ok=True)
-    task = asyncio.create_task(no_show_loop()) if settings.SCHEDULER_ENABLED else None
+    hub.bind_loop(asyncio.get_running_loop())
+    task = asyncio.create_task(booking_jobs_loop()) if settings.SCHEDULER_ENABLED else None
     yield
     if task:
         task.cancel()
@@ -75,6 +82,8 @@ app.include_router(complaints.router, prefix="/api/complaints", tags=["Complaint
 app.include_router(traffic.router,    prefix="/api/traffic",    tags=["Traffic"])
 app.include_router(alerts.router,     prefix="/api/alerts",     tags=["Alerts"])
 app.include_router(vendors.router,    prefix="/api/vendors",    tags=["Vendors"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(live.router,       prefix="/api/live",       tags=["Live updates"])
 
 settings.uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/api/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")

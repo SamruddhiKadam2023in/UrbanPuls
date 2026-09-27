@@ -18,6 +18,8 @@ from routes.bookings import normalize_vehicle
 from routes.zones import get_owned_zone
 from schemas import BookingOut, booking_out
 from services import booking_service as bs
+from services.live import zone_changed
+from services.notify import notify
 from services.pdf_service import generate_receipt
 
 log = logging.getLogger("tpms.gate")
@@ -132,6 +134,7 @@ def check_in(data: CheckInRequest, db: Session = Depends(get_db), user: User = D
         raise HTTPException(status_code=400, detail=f"Too early. Check-in opens at {fmt_local(opens)}")
     if now > booking.start_time + timedelta(minutes=settings.BOOKING_GRACE_MINUTES):
         booking.status = BookingStatus.no_show
+        zone_changed(db, booking.zone_id)
         db.commit()
         raise HTTPException(status_code=400, detail="This reservation expired. Park the car as a walk-in instead.")
 
@@ -148,6 +151,10 @@ def check_in(data: CheckInRequest, db: Session = Depends(get_db), user: User = D
     booking.checked_in_at = now
     slot.is_occupied = True
     slot.vehicle_number = booking.vehicle_number
+    notify(db, booking.user, "checkin", "Checked in",
+           f"{booking.vehicle_number} is parked in slot {slot.slot_number} at {booking.zone.name}. "
+           f"You pay at the gate when you leave.", link="/bookings")
+    zone_changed(db, booking.zone_id)
     db.commit()
     db.refresh(booking)
     return booking_out(booking)
@@ -186,6 +193,7 @@ def walk_in(data: WalkInRequest, db: Session = Depends(get_db), user: User = Dep
     slot.is_occupied = True
     slot.vehicle_number = data.vehicle_number
     db.add(booking)
+    zone_changed(db, zone.id)
     db.commit()
     db.refresh(booking)
     return booking_out(booking)
@@ -229,6 +237,12 @@ def check_out(data: CheckOutRequest, db: Session = Depends(get_db), user: User =
                                                 customer.name if customer else "Walk-in customer")
     except Exception:
         log.exception("Receipt generation failed for booking %s", booking.id)
+    paid = f"Rs {booking.final_amount:.2f} paid" + (f" by {booking.payment_method.value.upper()}" if booking.payment_method else "")
+    points = f" {booking.points_redeemed} points used." if booking.points_redeemed else ""
+    notify(db, customer, "checkout", "Thanks for parking with us",
+           f"{booking.vehicle_number} left {booking.zone.name}. {paid}.{points} Your receipt is in My Bookings.",
+           link="/bookings", email=True)
+    zone_changed(db, booking.zone_id)
     db.commit()
     db.refresh(booking)
     return booking_out(booking)

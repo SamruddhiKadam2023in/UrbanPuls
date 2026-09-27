@@ -73,3 +73,33 @@ def generate_fine_pdf(complaint) -> str:
     _build(path, "TPMS - Traffic Violation Fine", "#D85A30", "#FAECE7", "#712B13", "#F0997B", "#FFFAF8",
            rows, "This fine was generated after the complaint was verified by a TPMS administrator.")
     return str(path)
+
+def generate_report_pdf(title: str, subtitle: str, headers: list[str], rows: list[list]) -> bytes:
+    """Landscape table; the last row is treated as the totals row."""
+    import io
+    from reportlab.lib.pagesizes import landscape
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), topMargin=1.5*cm, bottomMargin=1.5*cm,
+                            leftMargin=1.2*cm, rightMargin=1.2*cm, title=title)
+    styles = getSampleStyleSheet()
+    cell = ParagraphStyle("cell", parent=styles["Normal"], fontSize=8, leading=10)
+    head = ParagraphStyle("head", parent=cell, fontName="Helvetica-Bold", textColor=colors.white)
+    fmt = lambda v: f"{v:,.2f}" if isinstance(v, float) else str(v)
+    data = [[Paragraph(h, head) for h in headers]] + [[Paragraph(fmt(v), cell) for v in r] for r in rows]
+    table = Table(data, repeatRows=1, colWidths=[4.2*cm] + [(27.3 - 4.2) / (len(headers) - 1) * cm] * (len(headers) - 1))
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1D4ED8")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, colors.HexColor("#F1F5F9")]),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#E1F5EE")),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING", (0, 0), (-1, -1), 5),
+    ]))
+    doc.build([
+        Paragraph(title, styles["Heading1"]),
+        Paragraph(f"{subtitle} · generated {fmt_local(utcnow())}", styles["Normal"]),
+        Spacer(1, 0.5*cm),
+        table,
+    ])
+    return buf.getvalue()

@@ -1,14 +1,20 @@
-from datetime import timedelta
-from fastapi import APIRouter, Depends
+import csv
+import io
+from datetime import date, datetime, time, timedelta
+from typing import Literal, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.security import require_roles
-from core.timeutil import utcnow, to_local
-from models.booking import Booking, BookingStatus
+from core.timeutil import utcnow, to_local, LOCAL_TZ
+from models.booking import Booking, BookingStatus, PaymentMethod
 from models.parking import ParkingZone
 from models.user import User, UserRole
+from services import booking_service as bs
+from services.pdf_service import generate_report_pdf
 
 router = APIRouter()
 vendor_or_admin = require_roles(UserRole.vendor, UserRole.admin)
@@ -56,3 +62,123 @@ def booking_trend(days: int = 7, db: Session = Depends(get_db), user: User = Dep
 
     return [{"date": d.isoformat(), "day": d.strftime("%a"), "bookings": v["bookings"],
              "revenue": round(v["revenue"], 2)} for d, v in buckets.items()]
+
+# ── Occupancy ─────────────────────────────────────────────────────────────────
+@router.get("/occupancy")
+def occupancy(db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    """Current state of every slot in the caller's zones."""
+    zones_q = db.query(ParkingZone)
+    if user.role != UserRole.admin:
+        zones_q = zones_q.filter(ParkingZone.vendor_id == user.id)
+    zones = zones_q.order_by(ParkingZone.id).all()
+    held = bs.held_slot_ids_now(db, [z.id for z in zones]) if zones else set()
+    out = []
+    for z in zones:
+        active = [s for s in z.slots if s.is_active]
+        parked = sum(1 for s in active if s.is_occupied)
+        reserved = sum(1 for s in active if not s.is_occupied and s.id in held)
+        total = len(active)
+        out.append({"zone_id": z.id, "zone_name": z.name, "is_active": z.is_active, "total": total,
+                    "parked": parked, "reserved": reserved, "free": total - parked - reserved,
+                    "occupancy_pct": round((parked + reserved) / total * 100) if total else 0})
+    return out
+
+# ── Revenue reports ───────────────────────────────────────────────────────────
+REPORT_COLUMNS = [
+    ("period", "Period"), ("reservations", "Reservations"), ("walk_ins", "Walk-ins"),
+    ("completed", "Completed"), ("no_shows", "No-shows"), ("cancelled", "Cancelled"),
+    ("cash", "Cash (Rs)"), ("upi", "UPI (Rs)"), ("discounts", "Points discount (Rs)"), ("revenue", "Revenue (Rs)"),
+]
+
+def _bucket(d: date, period: str) -> date:
+    if period == "week":
+        return d - timedelta(days=d.weekday())
+    if period == "month":
+        return d.replace(day=1)
+    return d
+
+def _label(d: date, period: str) -> str:
+    if period == "week":
+        return f"Week of {d.strftime('%d %b %Y')}"
+    if period == "month":
+        return d.strftime("%b %Y")
+    return d.strftime("%d %b %Y")
+
+@router.get("/report")
+def revenue_report(period: Literal["day", "week", "month"] = "day",
+                   start: Optional[date] = None, end: Optional[date] = None,
+                   zone_id: Optional[int] = None, format: Literal["json", "csv", "pdf"] = "json",
+                   db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    today = to_local(utcnow()).date()
+    end = end or today
+    start = start or end - timedelta(days=29)
+    if start > end:
+        raise HTTPException(status_code=400, detail="Start date must be before end date")
+    if (end - start).days > 366:
+        raise HTTPException(status_code=400, detail="Reports can cover at most one year")
+
+    # Local-day boundaries converted to UTC for the query
+    since = datetime.combine(start, time.min, LOCAL_TZ)
+    until = datetime.combine(end + timedelta(days=1), time.min, LOCAL_TZ)
+
+    q = _scope(db.query(Booking), db, user)
+    if zone_id is not None:
+        if user.role != UserRole.admin and not db.query(ParkingZone.id).filter(
+                ParkingZone.id == zone_id, ParkingZone.vendor_id == user.id).first():
+            raise HTTPException(status_code=403, detail="This zone belongs to another vendor")
+        q = q.filter(Booking.zone_id == zone_id)
+
+    rows: dict[date, dict] = {}
+    def row(d: date) -> dict:
+        key = _bucket(d, period)
+        return rows.setdefault(key, {k: 0 for k, _ in REPORT_COLUMNS[1:]})
+
+    for b in q.filter(Booking.created_at >= since, Booking.created_at < until).all():
+        r = row(to_local(b.created_at).date())
+        if b.is_walk_in:
+            r["walk_ins"] += 1
+        else:
+            r["reservations"] += 1
+        if b.status == BookingStatus.no_show:
+            r["no_shows"] += 1
+        elif b.status == BookingStatus.cancelled:
+            r["cancelled"] += 1
+    for b in q.filter(Booking.status == BookingStatus.completed,
+                      Booking.checked_out_at >= since, Booking.checked_out_at < until).all():
+        r = row(to_local(b.checked_out_at).date())
+        r["completed"] += 1
+        amount = b.final_amount or 0
+        r["revenue"] += amount
+        r["discounts"] += b.discount_amount or 0
+        if b.payment_method == PaymentMethod.cash:
+            r["cash"] += amount
+        elif b.payment_method == PaymentMethod.upi:
+            r["upi"] += amount
+
+    data = []
+    for key in sorted(rows):
+        r = rows[key]
+        data.append({"period": _label(key, period), "start": key.isoformat(),
+                     **{k: round(v, 2) if isinstance(v, float) else v for k, v in r.items()}})
+    totals = {k: round(sum(r[k] for r in data), 2) for k, _ in REPORT_COLUMNS[1:]}
+
+    filename = f"tpms_report_{period}_{start}_{end}"
+    if format == "csv":
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow([h for _, h in REPORT_COLUMNS])
+        for r in data:
+            w.writerow([r[k] for k, _ in REPORT_COLUMNS])
+        w.writerow(["Total", *[totals[k] for k, _ in REPORT_COLUMNS[1:]]])
+        return Response(buf.getvalue(), media_type="text/csv",
+                        headers={"Content-Disposition": f'attachment; filename="{filename}.csv"'})
+    if format == "pdf":
+        zone_name = db.get(ParkingZone, zone_id).name if zone_id else ("All zones" if user.role == UserRole.admin else "All your zones")
+        pdf = generate_report_pdf(
+            f"TPMS revenue report ({period})", f"{zone_name} · {start.strftime('%d %b %Y')} to {end.strftime('%d %b %Y')}",
+            [h for _, h in REPORT_COLUMNS],
+            [[r[k] for k, _ in REPORT_COLUMNS] for r in data] + [["Total", *[totals[k] for k, _ in REPORT_COLUMNS[1:]]]],
+        )
+        return Response(pdf, media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
+    return {"period": period, "start": start, "end": end, "rows": data, "totals": totals}

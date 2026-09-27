@@ -36,6 +36,10 @@ class ZoneOut(BaseModel):
     available_slots: int
     is_active: bool
     vendor_id: Optional[int] = None
+    upi_id: Optional[str] = None
+    upi_name: Optional[str] = None
+    avg_rating: Optional[float] = None
+    rating_count: int = 0
     slots: list[SlotOut] = []
 
 class BookingOut(BaseModel):
@@ -62,6 +66,7 @@ class BookingOut(BaseModel):
     final_amount: Optional[float]
     payment_method: Optional[str]
     has_receipt: bool
+    rating: Optional[int] = None
     created_at: datetime
 
 def booking_out(b: Booking) -> BookingOut:
@@ -78,5 +83,6 @@ def booking_out(b: Booking) -> BookingOut:
         points_to_redeem=b.points_to_redeem, points_redeemed=b.points_redeemed,
         discount_amount=b.discount_amount, final_amount=b.final_amount,
         payment_method=b.payment_method.value if b.payment_method else None,
-        has_receipt=bool(b.receipt_path), created_at=b.created_at,
+        has_receipt=bool(b.receipt_path), rating=b.rating.stars if b.rating else None,
+        created_at=b.created_at,
     )

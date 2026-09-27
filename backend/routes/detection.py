@@ -3,17 +3,17 @@ import logging
 from typing import Optional
 import cv2
 import numpy as np
-from fastapi import (APIRouter, Depends, File, HTTPException, Query, Request, UploadFile,
-                     WebSocket, WebSocketDisconnect, status)
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from core.config import settings
-from core.database import get_db, SessionLocal
+from core.database import get_db
 from core.ratelimit import limiter
-from core.security import require_roles, user_from_token
+from core.security import require_roles
 from core.timeutil import utcnow
 from models.booking import DetectionLog
 from models.user import User, UserRole
+from services.live import queue_event
 from services.storage_service import read_limited
 from yolo.detector import run_detection, model_available, VIOLATION_LABELS
 
@@ -21,7 +21,6 @@ log = logging.getLogger("tpms.detection")
 router = APIRouter()
 DETECTION_ROLES = (UserRole.admin, UserRole.vendor, UserRole.police)
 detection_staff = require_roles(*DETECTION_ROLES)
-active_connections: set[WebSocket] = set()
 
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
@@ -57,16 +56,11 @@ async def detect_from_image(
 
     db.add(DetectionLog(detections=json.dumps(detections), zone_id=zone_id,
                         is_violation=is_violation, created_by=user.id))
-    db.commit()
-
     if is_violation:
-        msg = json.dumps({"type": "violation", "zone_id": zone_id, "detections": violations,
-                          "timestamp": utcnow().isoformat()})
-        for ws in list(active_connections):
-            try:
-                await ws.send_text(msg)
-            except Exception:
-                active_connections.discard(ws)
+        # Live alert to every signed-in vendor, admin and police officer (sent after commit)
+        queue_event(db, "staff", {"type": "violation", "zone_id": zone_id, "detections": violations,
+                                  "timestamp": utcnow().isoformat()})
+    db.commit()
 
     return {
         "detections": detections,
@@ -75,31 +69,6 @@ async def detect_from_image(
         "count": len(detections),
         "mock": not model_available(),
     }
-
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str = Query("")):
-    # Browsers cannot send an Authorization header on WebSockets, so the token comes as a query parameter
-    db = SessionLocal()
-    try:
-        user = user_from_token(token, db)
-        allowed = user.role in DETECTION_ROLES
-    except HTTPException:
-        allowed = False
-    finally:
-        db.close()
-    if not allowed:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-
-    await websocket.accept()
-    active_connections.add(websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
-    finally:
-        active_connections.discard(websocket)
 
 @router.get("/logs")
 def get_detection_logs(zone_id: Optional[int] = None, db: Session = Depends(get_db),

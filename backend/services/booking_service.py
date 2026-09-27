@@ -6,7 +6,7 @@ from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 
 from core.config import settings
-from core.timeutil import utcnow
+from core.timeutil import utcnow, fmt_local
 from models.booking import Booking, BookingStatus
 from models.parking import ParkingSlot
 
@@ -105,14 +105,43 @@ def recent_no_show_count(db: Session, user_id: int) -> int:
                                     Booking.status == BookingStatus.no_show,
                                     Booking.start_time >= since).count()
 
-# ── Scheduled job ─────────────────────────────────────────────────────────────
+# ── Scheduled jobs ────────────────────────────────────────────────────────────
+REMINDER_MINUTES = 30
+
 def expire_no_shows(db: Session) -> list[Booking]:
     """Marks reservations whose car never arrived as no-shows. Safe to run from several workers."""
+    from services.live import zone_changed
+    from services.notify import notify
+
     cutoff = utcnow() - timedelta(minutes=settings.BOOKING_GRACE_MINUTES)
-    expired = db.query(Booking).filter(Booking.status == BookingStatus.reserved,
-                                       Booking.start_time < cutoff).all()
+    # SKIP LOCKED lets several workers run this at once without handling the same booking twice
+    expired = db.query(Booking).filter(Booking.status == BookingStatus.reserved, Booking.start_time < cutoff)         .with_for_update(skip_locked=True).all()
     for b in expired:
         b.status = BookingStatus.no_show
-    if expired:
-        db.commit()
+        notify(db, b.user, "no_show", "Reservation released",
+               f"Your car didn't arrive at {b.zone.name} by {fmt_local(b.start_time + timedelta(minutes=settings.BOOKING_GRACE_MINUTES))}, "
+               f"so slot {b.slot.slot_number} was released. Please cancel bookings you can't make: "
+               f"after {settings.NO_SHOW_LIMIT} missed bookings in {settings.NO_SHOW_WINDOW_DAYS} days, online booking is paused.",
+               link="/bookings", email=True)
+        zone_changed(db, b.zone_id)
+    db.commit()
     return expired
+
+def send_reminders(db: Session) -> list[Booking]:
+    """One reminder per reservation, shortly before its start time."""
+    from services.notify import notify
+
+    now = utcnow()
+    due = db.query(Booking).filter(Booking.status == BookingStatus.reserved,
+                                   Booking.reminder_sent.is_(False),
+                                   Booking.start_time <= now + timedelta(minutes=REMINDER_MINUTES),
+                                   Booking.start_time > now - timedelta(minutes=settings.BOOKING_GRACE_MINUTES))         .with_for_update(skip_locked=True).all()
+    for b in due:
+        b.reminder_sent = True
+        # Reservations made at the last minute already got a confirmation; no need to remind
+        if (b.start_time - b.created_at) > timedelta(minutes=REMINDER_MINUTES):
+            notify(db, b.user, "reminder", "Your parking starts soon",
+                   f"Slot {b.slot.slot_number} at {b.zone.name} is held for you from {fmt_local(b.start_time)}. "
+                   f"Show code {b.booking_code} at the gate.", link="/bookings")
+    db.commit()
+    return due

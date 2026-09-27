@@ -44,6 +44,7 @@ class Booking(Base):
     payment_recorded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     receipt_path      = Column(String(300), nullable=True)
+    reminder_sent     = Column(Boolean, default=False, nullable=False)   # "arriving soon" reminder
     created_at        = Column(UTCDateTime, default=utcnow, nullable=False)
     updated_at        = Column(UTCDateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -83,7 +84,8 @@ class Complaint(Base):
     created_at      = Column(UTCDateTime, default=utcnow, nullable=False)
     updated_at      = Column(UTCDateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
-    user = relationship("User", back_populates="complaints", foreign_keys=[user_id])
+    user   = relationship("User", back_populates="complaints", foreign_keys=[user_id])
+    events = relationship("ComplaintEvent", order_by="ComplaintEvent.id", cascade="all, delete-orphan")
 
 class TrafficData(Base):
     __tablename__ = "traffic_data"

@@ -9,12 +9,15 @@ from core.config import settings
 from core.database import get_db
 from core.ratelimit import limiter
 from core.security import get_current_user, require_verified
-from core.timeutil import to_utc, utcnow
+from core.timeutil import to_utc, utcnow, fmt_local
+from models.activity import Rating
 from models.booking import Booking, BookingStatus
 from models.parking import ParkingSlot, ParkingZone
 from models.user import User, UserRole
 from schemas import BookingOut, booking_out
 from services import booking_service as bs
+from services.live import zone_changed
+from services.notify import notify
 
 router = APIRouter()
 
@@ -41,6 +44,10 @@ class ReservationCreate(BaseModel):
 
 class ExtendRequest(BaseModel):
     end_time: AwareDatetime
+
+class RatingCreate(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=1000)
 
 def validate_window(start, end) -> None:
     now = utcnow()
@@ -98,6 +105,12 @@ def create_reservation(request: Request, data: ReservationCreate, db: Session = 
         status=BookingStatus.reserved,
     )
     db.add(booking)
+    db.flush()
+    notify(db, user, "booking", "Parking reserved",
+           f"Slot {slot.slot_number} at {zone.name} from {fmt_local(start)}. Show code {booking.booking_code} at the gate "
+           f"and arrive within {settings.BOOKING_GRACE_MINUTES} minutes of the start time.",
+           link="/bookings", email=True)
+    zone_changed(db, zone.id)
     db.commit()
     db.refresh(booking)
     return booking_out(booking)
@@ -129,6 +142,7 @@ def cancel_booking(booking_id: int, db: Session = Depends(get_db), user: User = 
     if booking.status != BookingStatus.reserved:
         raise HTTPException(status_code=400, detail="Only reservations that have not started parking can be cancelled")
     booking.status = BookingStatus.cancelled
+    zone_changed(db, booking.zone_id)
     db.commit()
     return {"message": "Booking cancelled"}
 
@@ -155,9 +169,23 @@ def extend_booking(booking_id: int, data: ExtendRequest, db: Session = Depends(g
 
     booking.end_time = new_end
     _, booking.estimated_amount = bs.fare_for(booking.start_time, new_end, booking.price_per_hour)
+    zone_changed(db, booking.zone_id)
     db.commit()
     db.refresh(booking)
     return booking_out(booking)
+
+@router.post("/{booking_id}/rating", status_code=201)
+def rate_booking(booking_id: int, data: RatingCreate, db: Session = Depends(get_db),
+                 user: User = Depends(get_current_user)):
+    booking = _get_own_booking(db, booking_id, user)
+    if booking.status != BookingStatus.completed:
+        raise HTTPException(status_code=400, detail="You can rate a visit after checking out")
+    if db.query(Rating.id).filter(Rating.booking_id == booking.id).first():
+        raise HTTPException(status_code=400, detail="You already rated this visit")
+    db.add(Rating(booking_id=booking.id, user_id=user.id, zone_id=booking.zone_id,
+                  stars=data.stars, comment=data.comment.strip() or None))
+    db.commit()
+    return {"message": "Thanks for your rating"}
 
 @router.get("/{booking_id}/receipt")
 def download_receipt(booking_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

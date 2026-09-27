@@ -15,4 +15,7 @@ def get_db():
     try:
         yield db
     finally:
+        # Anything queued but never committed (e.g. the request failed) must not be sent later
+        db.info.pop("live_events", None)
+        db.info.pop("live_emails", None)
         db.close()
