@@ -1,14 +1,31 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Dark basemap (CartoDB, based on OpenStreetMap). Free for moderate use; attribution is required.
-export const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-export const TILE_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>'
+const OSM_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+// Map background tiles.
+// - With VITE_MAPTILER_KEY set (see frontend/.env.example): MapTiler's dark map. Use this in production.
+// - Without a key: the free OpenStreetMap tiles, darkened with a CSS filter (fine for development
+//   and light use; OpenStreetMap's usage policy does not allow heavy production traffic).
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY
+const MAPTILER_STYLE = import.meta.env.VITE_MAPTILER_STYLE || 'streets-v2-dark'
+
+export const TILES = MAPTILER_KEY
+  ? {
+      url: `https://api.maptiler.com/maps/${MAPTILER_STYLE}/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+      attribution: '<a href="https://www.maptiler.com/copyright/">© MapTiler</a> ' + OSM_ATTRIBUTION,
+      className: '',
+    }
+  : {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: OSM_ATTRIBUTION,
+      className: 'tpms-osm-dark',
+    }
 export const MUMBAI = [19.076, 72.8777]
 
 export function createMap(el, { center = MUMBAI, zoom = 12 } = {}) {
   const map = L.map(el, { zoomControl: false }).setView(center, zoom)
-  L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map)
+  L.tileLayer(TILES.url, { attribution: TILES.attribution, className: TILES.className, maxZoom: 19 }).addTo(map)
   L.control.zoom({ position: 'bottomright' }).addTo(map)
   return map
 }

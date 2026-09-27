@@ -54,6 +54,9 @@ body::before {
 
 #root { position: relative; z-index: 1; }
 
+/* Free OpenStreetMap tiles are light; darken them to match the app when no MapTiler key is set */
+:root:not([data-theme="light"]) .tpms-osm-dark { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
+
 @layer components {
   .card {
     background: var(--c-surface);

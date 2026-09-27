@@ -64,6 +64,7 @@ export default function Navbar() {
 
   const applyTheme = (isDark) => {
     const r = document.documentElement
+    r.dataset.theme = isDark ? 'dark' : 'light'   // lets CSS (e.g. map tiles) follow the theme
     if (isDark) {
       r.style.setProperty('--c-bg',      '#080d1a'); r.style.setProperty('--c-bg2',     '#0d1425')
       r.style.setProperty('--c-bg3',     '#111c30'); r.style.setProperty('--c-surface',  '#162035')

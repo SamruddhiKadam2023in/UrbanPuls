@@ -47,6 +47,7 @@ services:
       context: ./frontend
       args:
         VITE_SHOW_DEMO_LOGINS: "true"   # local testing only; the production setup leaves this off
+        VITE_MAPTILER_KEY: ${VITE_MAPTILER_KEY:-}   # read from the .env file next to this one
     container_name: tpms_frontend
     ports:
       - "5173:80"
