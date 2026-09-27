@@ -7,7 +7,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // Set VITE_API_TARGET=http://localhost:8001 if port 8000 is used by something else
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         ws: true,   // live violation alerts use a WebSocket under /api
       }

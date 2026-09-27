@@ -41,7 +41,13 @@ const authSlice = createSlice({
       state.token = null
       localStorage.removeItem('token')
     },
-    clearError(state) { state.error = null }
+    clearError(state) { state.error = null },
+    userUpdated(state, action) { state.user = action.payload },
+    // After a password change the old token stops working; keep this device signed in with the new one
+    tokenReplaced(state, action) {
+      state.token = action.payload
+      localStorage.setItem('token', action.payload)
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -56,5 +62,5 @@ const authSlice = createSlice({
   }
 })
 
-export const { logout, clearError } = authSlice.actions
+export const { logout, clearError, userUpdated, tokenReplaced } = authSlice.actions
 export default authSlice.reducer

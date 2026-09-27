@@ -9,3 +9,7 @@ export const ROLES = {
 }
 
 export const hasRole = (user, area) => !!user && ROLES[area].includes(user.role)
+
+// Where each role lands after signing in
+const HOME = { vendor: '/gate', police: '/police', admin: '/dashboard' }
+export const homeFor = (role) => HOME[role] || '/'

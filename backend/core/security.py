@@ -45,13 +45,17 @@ def decode_token(token: str, expected_type: str) -> dict:
         raise HTTPException(status_code=400 if expected_type != "access" else 401, detail="Invalid token")
     return payload
 
+def password_fingerprint(user: User) -> str:
+    # Changes whenever the password changes, which signs out every existing session
+    return user.hashed_password[-12:]
+
 def create_access_token(user: User) -> str:
-    return _encode({"sub": str(user.id), "role": user.role.value, "type": "access"},
+    return _encode({"sub": str(user.id), "role": user.role.value, "type": "access", "fp": password_fingerprint(user)},
                    timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
 
 def create_reset_token(user: User) -> str:
     # Tied to the current password hash, so the link stops working once it has been used
-    return _encode({"sub": str(user.id), "fp": user.hashed_password[-12:], "type": "reset"},
+    return _encode({"sub": str(user.id), "fp": password_fingerprint(user), "type": "reset"},
                    timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES))
 
 def create_verify_token(user: User) -> str:
@@ -71,7 +75,7 @@ def user_from_token(token: str, db: Session) -> User:
     except (TypeError, ValueError):
         raise credentials_exception
     user = db.get(User, user_id)
-    if user is None:
+    if user is None or payload.get("fp") != password_fingerprint(user):
         raise credentials_exception
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")

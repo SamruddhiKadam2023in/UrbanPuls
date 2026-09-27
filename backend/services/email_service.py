@@ -40,3 +40,9 @@ def send_password_reset_email(user: User) -> None:
                f"If it was you, open this link to choose a new password:\n{link}\n\n"
                f"The link is valid for {settings.RESET_TOKEN_EXPIRE_MINUTES} minutes and works once. "
                f"If you did not ask for this, you can ignore this email.\n\n— TPMS")
+
+def send_email_changed_notice(old_email: str, name: str, new_email: str) -> None:
+    send_email(old_email, "Your TPMS email address was changed",
+               f"Hi {name},\n\nThe email address on your TPMS account was changed to {new_email}.\n\n"
+               f"If you did not do this, reset your password straight away at {settings.FRONTEND_URL}/forgot-password "
+               f"and contact support.\n\n— TPMS")

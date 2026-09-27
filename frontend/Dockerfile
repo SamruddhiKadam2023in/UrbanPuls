@@ -1,6 +1,9 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+# Only local test builds set this; production builds never show demo sign-in buttons
+ARG VITE_SHOW_DEMO_LOGINS=false
+ENV VITE_SHOW_DEMO_LOGINS=$VITE_SHOW_DEMO_LOGINS
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
