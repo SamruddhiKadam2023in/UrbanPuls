@@ -23,15 +23,14 @@ const trafficSlice = createSlice({
 })
 export default trafficSlice.reducer
 
-// ─── DETECTION ───────────────────────────────────────────────────────────────
+// ─── DETECTION / LIVE CONNECTION ────────────────────────────────────────────
 const detectionSlice = createSlice({
   name: 'detection',
-  initialState: { results: [], violations: [], wsConnected: false },
+  initialState: { violations: [], wsConnected: false },
   reducers: {
-    addDetection:   (s, a) => { s.results.unshift(a.payload); if (s.results.length > 20) s.results.pop() },
     addViolation:   (s, a) => { s.violations.unshift(a.payload); if (s.violations.length > 20) s.violations.pop() },
     setWsConnected: (s, a) => { s.wsConnected = a.payload }
   }
 })
-export const { addDetection, addViolation, setWsConnected } = detectionSlice.actions
+export const { addViolation, setWsConnected } = detectionSlice.actions
 export const detectionReducer = detectionSlice.reducer

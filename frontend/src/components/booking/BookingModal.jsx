@@ -6,7 +6,6 @@ import toast from 'react-hot-toast'
 import api, { errorMessage } from '../../utils/api'
 import { fetchZones } from '../../store/slices/zonesSlice'
 import { speakBookingConfirm } from '../../utils/voice'
-import { addNotification } from '../../pages/NotificationsPage'
 import { fmtDateTime, localInputToISO, minutesToText, rupees, toLocalInput } from '../../utils/format'
 
 const STEPS = ['Time & Vehicle', 'Choose Slot', 'Confirm']
@@ -65,8 +64,6 @@ export default function BookingModal({ zone, onClose }) {
       })
       setBooking(res.data)
       speakBookingConfirm(zone.name, res.data.estimated_amount, user?.preferred_lang || 'en')
-      addNotification('booking', '✅ Parking reserved',
-        `Slot ${res.data.slot_number} at ${zone.name}, ${fmtDateTime(res.data.start_time)}. Show code ${res.data.booking_code} at the gate.`, '/bookings')
       dispatch(fetchZones())
       setStep(3)
     } catch (e) {

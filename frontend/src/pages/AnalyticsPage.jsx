@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, Legend } from 'recharts'
 import api from '../utils/api'
+import RevenueReport from '../components/reports/RevenueReport'
 
 const COLORS = ['#3b82f6', '#06d6a0', '#f72585', '#ffd166', '#a78bfa', '#fb923c']
 
@@ -137,6 +138,8 @@ export default function Analytics() {
       </div>
 
       {/* Complaint status breakdown */}
+      <div style={{ marginBottom: '16px' }}><RevenueReport /></div>
+
       {statusPie.length > 0 && (
         <div className="card" style={{ padding: '20px' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>✅ Complaint Resolution Status</h3>

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import api, { errorMessage } from '../utils/api'
 import { fmtDateTime, fmtTime, minutesToText, rupees, STATUS } from '../utils/format'
 import QrScanner from '../components/gate/QrScanner'
+import { ZONE_EVENT } from '../components/common/LiveConnection'
 
 const box = { background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '14px' }
 
@@ -169,8 +170,11 @@ export default function Gate() {
     if (!zoneId) return
     localStorage.setItem('tpms_gate_zone', zoneId)
     refresh()
-    const id = setInterval(refresh, 30000)
-    return () => clearInterval(id)
+    // Live updates when a car arrives, leaves or a reservation changes; the timer is a fallback
+    const onZone = (e) => { if (e.detail.zoneId === zoneId) refresh() }
+    window.addEventListener(ZONE_EVENT, onZone)
+    const id = setInterval(refresh, 60000)
+    return () => { clearInterval(id); window.removeEventListener(ZONE_EVENT, onZone) }
   }, [zoneId, refresh])
 
   const lookup = async (raw) => {

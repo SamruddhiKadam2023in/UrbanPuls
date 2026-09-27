@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 import { fetchMyComplaints } from '../store/slices/complaintsSlice'
 import api, { errorMessage } from '../utils/api'
+import { fmtDateTime } from '../utils/format'
 
 const TYPES = [
   { value: 'illegal_parking',    label: '🚫 Illegal Parking'       },
@@ -154,6 +155,16 @@ export default function Complaints() {
                   </div>
                   <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '4px' }}>{c.description || 'No description provided'}</p>
                   <p style={{ fontSize: '11px', color: 'var(--c-text3)', fontFamily: 'var(--font-mono)' }}>📍 {c.latitude}, {c.longitude}</p>
+                  {c.timeline?.length > 0 && (
+                    <ol style={{ listStyle: 'none', borderLeft: '2px solid var(--c-border)', paddingLeft: '12px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {c.timeline.map((e, i) => (
+                        <li key={i} style={{ fontSize: '12px', color: 'var(--c-text2)' }}>
+                          <strong style={{ textTransform: 'capitalize', color: 'var(--c-text)' }}>{e.status}</strong>
+                          {' · '}{fmtDateTime(e.at)}{e.by ? ` · ${e.by}` : ''}{e.note ? ` — ${e.note}` : ''}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                 </div>
                 {c.photo_url && <img src={c.photo_url} alt="evidence" style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '10px', border: '1px solid var(--c-border)', flexShrink: 0 }} />}
               </div>

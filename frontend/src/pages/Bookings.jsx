@@ -118,9 +118,6 @@ export default function Bookings() {
   const [extending, setExtending] = useState(null)
   const [rating, setRating] = useState(null)
   const [limits, setLimits] = useState(null)
-  const [ratings, setRatings] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('tpms_ratings') || '{}') } catch { return {} }
-  })
 
   useEffect(() => {
     dispatch(fetchMyBookings())
@@ -157,11 +154,12 @@ export default function Bookings() {
     URL.revokeObjectURL(url)
   }
 
-  const submitRating = (value, comment) => {
-    const updated = { ...ratings, [rating.id]: { rating: value, comment, date: new Date().toISOString() } }
-    setRatings(updated)
-    localStorage.setItem('tpms_ratings', JSON.stringify(updated))
-    toast.success('Thanks for your rating!')
+  const submitRating = async (stars, comment) => {
+    try {
+      await api.post(`/bookings/${rating.id}/rating`, { stars, comment })
+      dispatch(bookingUpdated({ ...rating, rating: stars }))
+      toast.success(t('bookings.rated', 'Thanks for your rating!'))
+    } catch (e) { toast.error(errorMessage(e)) }
     setRating(null)
   }
 
@@ -232,8 +230,8 @@ export default function Bookings() {
       ))}
 
       {section('Past bookings', 'var(--c-text2)', past, b => (
-        <BookingCard key={b.id} b={b} extra={ratings[b.id] && <span style={{ fontSize: '12px' }}>{'⭐'.repeat(ratings[b.id].rating)}</span>}>
-          {b.status === 'completed' && !ratings[b.id] && (
+        <BookingCard key={b.id} b={b} extra={b.rating && <span style={{ fontSize: '12px', color: '#ffd166' }}>{'★'.repeat(b.rating)}</span>}>
+          {b.status === 'completed' && !b.rating && (
             <button onClick={() => setRating(b)} className="btn btn-sm" style={{ background: 'rgba(255,209,102,0.1)', color: '#ffd166', border: '1px solid rgba(255,209,102,0.3)' }}>⭐ Rate</button>
           )}
           {b.has_receipt && <button onClick={() => downloadReceipt(b)} className="btn btn-ghost btn-sm">{t('bookings.receipt')}</button>}

@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useSelector } from 'react-redux'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { useDropzone } from 'react-dropzone'
-import api, { errorMessage, wsUrl } from '../utils/api'
-import { addViolation, setWsConnected } from '../store/slices/detectionSlice'
-import { speakViolationAlert } from '../utils/voice'
-import i18n from '../i18n'
+import api, { errorMessage } from '../utils/api'
 
 export default function Detection() {
-  const dispatch = useDispatch()
+  const { t } = useTranslation()
+  // Violations arrive over the app-wide live connection (components/common/LiveConnection.jsx)
   const { violations, wsConnected } = useSelector(s => s.detection)
   const [detections, setDetections] = useState([])
   const [preview, setPreview] = useState(null)
@@ -18,23 +17,6 @@ export default function Detection() {
 
   useEffect(() => {
     api.get('/detect/status').then(r => setStatus(r.data)).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    const ws = new WebSocket(wsUrl('/detect/ws'))
-    ws.onopen  = () => dispatch(setWsConnected(true))
-    ws.onclose = () => dispatch(setWsConnected(false))
-    ws.onmessage = (evt) => {
-      try {
-        const data = JSON.parse(evt.data)
-        if (data.type === 'violation') {
-          dispatch(addViolation(data))
-          toast.error(`🚨 Violation in Zone ${data.zone_id}!`)
-          speakViolationAlert(i18n.language)
-        }
-      } catch {}
-    }
-    return () => ws.close()
   }, [])
 
   const onDrop = useCallback((files) => {
@@ -51,7 +33,8 @@ export default function Detection() {
       const fd = new FormData(); fd.append('file', file)
       const res = await api.post('/detect/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setDetections(res.data.detections)
-      if (res.data.is_violation) { toast.error(`🚨 ${res.data.violations.length} violation(s) found!`); speakViolationAlert(i18n.language) }
+      // Same toast id as the live alert, so staff don't see it twice
+      if (res.data.is_violation) toast.error(t('detection.found', '🚨 {{n}} violation(s) found', { n: res.data.violations.length }), { id: 'violation' })
       else toast.success(`✅ ${res.data.count} objects detected. No violations.`)
     } catch (e) { toast.error(errorMessage(e, 'Detection failed')) }
     finally { setLoading(false) }

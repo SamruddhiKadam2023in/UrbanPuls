@@ -11,7 +11,6 @@ export default function Dashboard() {
   const user = useSelector(s => s.auth.user)
   const isAdmin = user?.role === 'admin'
   const [complaints, setComplaints] = useState([])
-  const [vendorRequests, setVendorRequests] = useState([])
   const [stats, setStats] = useState(null)
   const [trafficSummary, setTrafficSummary] = useState([])
   const [tab, setTab] = useState('overview')
@@ -21,23 +20,20 @@ export default function Dashboard() {
     api.get('/traffic/summary').then(r => setTrafficSummary(r.data)).catch(() => {})
     if (isAdmin) {
       api.get('/complaints/', { params: { status: 'pending' } }).then(r => setComplaints(r.data)).catch(() => {})
-      api.get('/admin/users', { params: { vendor_requested: true } }).then(r => setVendorRequests(r.data)).catch(() => {})
     }
   }, [isAdmin])
 
   const reviewComplaint = async (id, action) => {
+    let body = {}
+    if (action === 'reject') {
+      const note = prompt('Why is this complaint rejected? (sent to the reporter, optional)')
+      if (note === null) return
+      body = { note }
+    }
     try {
-      await api.patch(`/complaints/${id}/${action}`)
+      await api.patch(`/complaints/${id}/${action}`, body)
       setComplaints(c => c.filter(x => x.id !== id))
       toast.success(action === 'verify' ? 'Verified: points awarded and fine created' : 'Complaint rejected')
-    } catch (e) { toast.error(errorMessage(e)) }
-  }
-
-  const reviewVendor = async (u, approve) => {
-    try {
-      await api.patch(`/admin/users/${u.id}`, approve ? { role: 'vendor' } : { vendor_requested: false })
-      setVendorRequests(list => list.filter(x => x.id !== u.id))
-      toast.success(approve ? `${u.name} is now a vendor` : 'Request declined')
     } catch (e) { toast.error(errorMessage(e)) }
   }
 
@@ -46,7 +42,7 @@ export default function Dashboard() {
   ).map(([name, value]) => ({ name: name.replaceAll('_', ' '), value }))
 
   const tabs = [['overview', '📈 Overview']]
-  if (isAdmin) tabs.push(['complaints', `⚠️ Complaints (${complaints.length})`], ['vendors', `🏢 Vendor requests (${vendorRequests.length})`])
+  if (isAdmin) tabs.push(['complaints', `⚠️ Complaints (${complaints.length})`])
 
   return (
     <div className="page-wrap fade-in">
@@ -142,26 +138,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {tab === 'vendors' && isAdmin && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {vendorRequests.length === 0 && (
-            <div className="card" style={{ padding: '50px', textAlign: 'center' }}>
-              <p style={{ color: 'var(--c-text2)' }}>No vendor requests waiting.</p>
-            </div>
-          )}
-          {vendorRequests.map(u => (
-            <div key={u.id} className="card" style={{ padding: '18px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '200px' }}>
-                <div style={{ fontWeight: 600, color: 'var(--c-text)' }}>{u.name}</div>
-                <div style={{ fontSize: '12px', color: 'var(--c-text2)' }}>{u.email}{u.phone ? ` · ${u.phone}` : ''}</div>
-                {!u.email_verified && <span className="badge badge-yellow" style={{ marginTop: '6px' }}>Email not verified</span>}
-              </div>
-              <button onClick={() => reviewVendor(u, true)} className="btn btn-accent btn-sm">Approve</button>
-              <button onClick={() => reviewVendor(u, false)} className="btn btn-ghost btn-sm">Decline</button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMe } from './store/slices/authSlice'
 import { hasRole } from './utils/roles'
+import i18n from './i18n'
 
 import Navbar         from './components/common/Navbar'
 import VerifyBanner   from './components/common/VerifyBanner'
+import LiveConnection from './components/common/LiveConnection'
 import Login          from './pages/Login'
 import Register       from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -22,6 +24,9 @@ import Gate           from './pages/Gate'
 import Profile        from './pages/Profile'
 import Notifications  from './pages/NotificationsPage'
 import Analytics      from './pages/AnalyticsPage'
+import Zones          from './pages/Zones'
+import Admin          from './pages/Admin'
+import Police         from './pages/Police'
 
 function ProtectedRoute({ children, area }) {
   const token = useSelector(s => s.auth.token)
@@ -38,7 +43,16 @@ export default function App() {
   const dispatch = useDispatch()
   const token    = useSelector(s => s.auth.token)
 
+  const user     = useSelector(s => s.auth.user)
+
   useEffect(() => { if (token) dispatch(fetchMe()) }, [token])
+
+  // On a new device, start in the language saved on the account
+  useEffect(() => {
+    if (user?.preferred_lang && !localStorage.getItem('lang') && user.preferred_lang !== i18n.language) {
+      i18n.changeLanguage(user.preferred_lang)
+    }
+  }, [user?.preferred_lang])
 
   const p = (el, area) => <ProtectedRoute area={area}>{el}</ProtectedRoute>
 
@@ -47,6 +61,7 @@ export default function App() {
       <div className="min-h-screen flex flex-col">
         {token && <Navbar />}
         {token && <VerifyBanner />}
+        <LiveConnection />
         <main style={{ flex: 1 }}>
           <Routes>
             <Route path="/login"           element={<Login />} />
@@ -65,6 +80,9 @@ export default function App() {
             <Route path="/analytics"     element={p(<Analytics />, 'staff')} />
             <Route path="/gate"          element={p(<Gate />, 'gate')} />
             <Route path="/detection"     element={p(<Detection />, 'detection')} />
+            <Route path="/zones"         element={p(<Zones />, 'zones')} />
+            <Route path="/police"        element={p(<Police />, 'police')} />
+            <Route path="/admin"         element={p(<Admin />, 'admin')} />
             <Route path="*"              element={<Navigate to="/" replace />} />
           </Routes>
         </main>

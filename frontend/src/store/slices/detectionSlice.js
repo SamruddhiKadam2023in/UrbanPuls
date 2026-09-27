@@ -1,1 +1,1 @@
-export { detectionReducer as default, addDetection, addViolation, setWsConnected } from './trafficSlice'
+export { detectionReducer as default, addViolation, setWsConnected } from './trafficSlice'

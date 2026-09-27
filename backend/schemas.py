@@ -16,6 +16,7 @@ class UserOut(BaseModel):
     email_verified: bool
     vendor_requested: bool
     is_active: bool
+    created_at: Optional[datetime] = None
 
 class SlotOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -3,19 +3,24 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useState, useEffect, useRef } from 'react'
 import { logout } from '../../store/slices/authSlice'
 import i18n from '../../i18n'
+import api from '../../utils/api'
+import { useTranslation } from 'react-i18next'
 import NotificationBell from './NotificationBell'
 import { hasRole } from '../../utils/roles'
 
 // area: only shown to roles allowed in that area (see utils/roles.js)
 const NAV = [
-  { to: '/map',        icon: '🗺️', label: 'Live Map'   },
-  { to: '/bookings',   icon: '📋', label: 'Bookings'   },
-  { to: '/gate',       icon: '🚧', label: 'Gate',       area: 'gate' },
-  { to: '/complaints', icon: '⚠️', label: 'Complaints' },
-  { to: '/detection',  icon: '🔍', label: 'YOLO AI',    area: 'detection' },
-  { to: '/analytics',  icon: '📊', label: 'Analytics',  area: 'staff' },
-  { to: '/dashboard',  icon: '⚙️', label: 'Admin',      area: 'staff' },
-  { to: '/emergency',  icon: '🚨', label: 'Emergency'  },
+  { to: '/map',        icon: '🗺️', key: 'nav.map',        label: 'Live Map'   },
+  { to: '/bookings',   icon: '📋', key: 'nav.bookings',   label: 'Bookings'   },
+  { to: '/gate',       icon: '🚧', key: 'nav.gate',       label: 'Gate',       area: 'gate' },
+  { to: '/zones',      icon: '🅿', key: 'nav.zones',      label: 'Zones',      area: 'zones' },
+  { to: '/complaints', icon: '⚠️', key: 'nav.complaints', label: 'Complaints' },
+  { to: '/police',     icon: '🚓', key: 'nav.police',     label: 'Enforcement', area: 'police' },
+  { to: '/detection',  icon: '🔍', key: 'nav.yolo',       label: 'YOLO AI',    area: 'detection' },
+  { to: '/analytics',  icon: '📊', key: 'nav.analytics',  label: 'Analytics',  area: 'staff' },
+  { to: '/dashboard',  icon: '⚙️', key: 'nav.dashboard',  label: 'Dashboard',  area: 'staff' },
+  { to: '/admin',      icon: '🛡', key: 'nav.admin',      label: 'Admin',      area: 'admin' },
+  { to: '/emergency',  icon: '🚨', key: 'nav.emergency',  label: 'Emergency'  },
 ]
 
 const LANGS = [
@@ -29,6 +34,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const user     = useSelector(s => s.auth.user)
+  const { t }    = useTranslation()
 
   const [langOpen,    setLangOpen]    = useState(false)
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('lang') || 'en')
@@ -41,11 +47,11 @@ export default function Navbar() {
   const handleLogout = () => { dispatch(logout()); navigate('/login') }
 
   const switchLang = (code) => {
-    i18n.changeLanguage(code)
+    i18n.changeLanguage(code)          // every page uses useTranslation, so no reload is needed
     localStorage.setItem('lang', code)
     setCurrentLang(code)
     setLangOpen(false)
-    window.location.reload()
+    api.patch(`/auth/language?lang=${code}`).catch(() => {})   // remembered on other devices too
   }
 
   useEffect(() => {
@@ -94,9 +100,9 @@ export default function Navbar() {
 
         {/* Nav links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, overflowX: 'auto' }}>
-          {links.map(({ to, icon, label }) => (
+          {links.map(({ to, icon, key, label }) => (
             <Link key={to} to={to} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.2s', color: isActive(to) ? '#60a5fa' : 'var(--c-text2)', background: isActive(to) ? 'rgba(59,130,246,0.12)' : 'transparent' }}>
-              <span style={{ fontSize: '13px' }}>{icon}</span>{label}
+              <span style={{ fontSize: '13px' }}>{icon}</span>{t(key, label)}
             </Link>
           ))}
         </div>
