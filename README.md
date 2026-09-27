@@ -15,12 +15,21 @@ Walk-in cars without a booking can be checked in straight from the Gate screen.
 
 ## Roles
 
-| Role | Can do |
-|------|--------|
-| User | Reserve, extend and cancel bookings; report complaints; earn points |
-| Vendor | Everything a user can, plus manage their own zones, use the Gate screen, see stats. Vendor sign-ups need admin approval |
-| Police | Review verified complaints, use violation detection |
-| Admin | Everything: approve vendors, create staff accounts, verify complaints |
+| Role | Can do | Pages |
+|------|--------|-------|
+| User | Reserve, extend and cancel bookings; rate visits; report complaints; earn points | Map, Bookings, Complaints, Notifications |
+| Vendor | Everything a user can, plus manage their own zones and slots, check cars in and out, see reports. Vendor sign-ups need admin approval | + Gate, Zones, Analytics, Dashboard |
+| Police | Resolve verified complaints on a map, download fines, use violation detection | + Enforcement, Detection |
+| Admin | Everything: manage users and roles, approve vendors, create staff accounts, verify complaints | + Admin |
+
+## Live updates and notifications
+
+The browser keeps one WebSocket open (`/api/live/ws`). Through it:
+- users get notifications (booking confirmed, checked in, receipt, reminder 30 minutes before start, no-show, complaint updates)
+- maps, the Gate screen and the Zones page refresh when availability changes
+- vendors, police and admins get violation alerts
+
+Notifications are also stored (bell icon) and the important ones are emailed. They are written in each user's chosen language.
 
 Nobody can make themselves an admin at sign-up. Staff accounts are created by an admin (`POST /api/admin/users`), and the first admin with `create_admin.py`.
 
@@ -77,6 +86,18 @@ Development uses SQLite by default. Emails (verification and password reset link
 | Vendor | vendor@tpms.com | vendor123 |
 | User | user@tpms.com | user123 |
 | Police | police@tpms.com | police123 |
+
+## Languages
+
+The app is available in English, Hindi and Marathi. Text lives in `frontend/src/locales/*.json`; the English wording is written in the code as `t('key', 'English text')`.
+
+```bash
+cd frontend
+npm run i18n:sync     # after changing text in the code: updates en.json
+npm run i18n:check    # fails if Hindi or Marathi is missing a key or a {{placeholder}}
+```
+
+Server notifications and emails are in `backend/services/messages.py`.
 
 ## Tests
 
