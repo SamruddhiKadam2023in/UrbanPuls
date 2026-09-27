@@ -25,25 +25,17 @@ export default function Analytics() {
   const [bookingTrend,   setBookingTrend]   = useState([])
 
   useEffect(() => {
-    if (user?.role === 'vendor' || user?.role === 'admin') {
-      api.get('/vendors/stats').then(r => setVendorStats(r.data)).catch(() => {})
-    }
+    api.get('/vendors/stats').then(r => setVendorStats(r.data)).catch(() => {})
+    api.get('/vendors/trend', { params: { days: 7 } }).then(r => setBookingTrend(r.data)).catch(() => {})
     api.get('/traffic/summary').then(r => setTrafficSummary(r.data)).catch(() => {})
     if (user?.role === 'admin') {
       api.get('/complaints/').then(r => setComplaints(r.data)).catch(() => {})
     }
-
-    // Mock booking trend for last 7 days
-    const trend = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (6 - i))
-      return { day: d.toLocaleDateString('en', { weekday: 'short' }), bookings: Math.floor(Math.random() * 20 + 5), revenue: Math.floor(Math.random() * 2000 + 500) }
-    })
-    setBookingTrend(trend)
-  }, [])
+  }, [user?.role])
 
   const complaintPie = Object.entries(
     complaints.reduce((acc, c) => { acc[c.complaint_type] = (acc[c.complaint_type] || 0) + 1; return acc }, {})
-  ).map(([name, value]) => ({ name: name.replace('_', ' '), value }))
+  ).map(([name, value]) => ({ name: name.replaceAll('_', ' '), value }))
 
   const statusPie = Object.entries(
     complaints.reduce((acc, c) => { acc[c.status] = (acc[c.status] || 0) + 1; return acc }, {})
@@ -76,7 +68,7 @@ export default function Analytics() {
           <StatCard label="Total Zones"    value={vendorStats.total_zones}                        color="#3b82f6" bg="rgba(59,130,246,0.08)"   border="rgba(59,130,246,0.2)" />
           <StatCard label="Total Bookings" value={vendorStats.total_bookings}                     color="#06d6a0" bg="rgba(6,214,160,0.08)"    border="rgba(6,214,160,0.2)" />
           <StatCard label="Total Revenue"  value={`₹${vendorStats.total_revenue?.toFixed(0)}`}   color="#ffd166" bg="rgba(255,209,102,0.08)"  border="rgba(255,209,102,0.2)" />
-          <StatCard label="Complaints"     value={complaints.length}                              color="#f87171" bg="rgba(239,35,60,0.08)"    border="rgba(239,35,60,0.2)" />
+          <StatCard label="No-shows"       value={vendorStats.no_shows}                           color="#f87171" bg="rgba(239,35,60,0.08)"    border="rgba(239,35,60,0.2)" />
         </div>
       )}
 
@@ -87,7 +79,7 @@ export default function Analytics() {
         <div className="card" style={{ padding: '20px', gridColumn: '1 / -1' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>📈 Booking Trend (Last 7 Days)</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={bookingTrend} margin={{ left: -20, right: 10 }}>
+            <AreaChart data={bookingTrend} margin={{ left: -20, right: 0 }}>
               <defs>
                 <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
@@ -99,11 +91,12 @@ export default function Analytics() {
                 </linearGradient>
               </defs>
               <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--c-text2)' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--c-text2)' }} />
+              <YAxis yAxisId="b" allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--c-text2)' }} />
+              <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11, fill: 'var(--c-text2)' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: '12px', color: 'var(--c-text2)' }} />
-              <Area type="monotone" dataKey="bookings" stroke="#3b82f6" fill="url(#blueGrad)"  strokeWidth={2} name="Bookings" />
-              <Area type="monotone" dataKey="revenue"  stroke="#06d6a0" fill="url(#greenGrad)" strokeWidth={2} name="Revenue (₹)" />
+              <Area yAxisId="b" type="monotone" dataKey="bookings" stroke="#3b82f6" fill="url(#blueGrad)"  strokeWidth={2} name="Bookings" />
+              <Area yAxisId="r" type="monotone" dataKey="revenue"  stroke="#06d6a0" fill="url(#greenGrad)" strokeWidth={2} name="Revenue (₹)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

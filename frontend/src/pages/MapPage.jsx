@@ -93,7 +93,7 @@ export default function MapPage() {
           </div>
           <button onclick="window.__bookZone(${zone.id})"
             style="width:100%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:white;border:none;padding:8px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">
-            🅿 Book This Slot
+            🅿 Reserve
           </button>
         </div>
       `, {
@@ -239,10 +239,8 @@ export default function MapPage() {
                         </button>
                         <button
                           onClick={() => { dispatch(selectZone(zone)); setShowBooking(true) }}
-                          disabled={avail === 0}
-                          className="btn btn-primary btn-sm"
-                          style={{ opacity: avail === 0 ? 0.4 : 1 }}>
-                          {avail === 0 ? 'Full' : 'Book →'}
+                          className="btn btn-primary btn-sm">
+                          Reserve →
                         </button>
                       </div>
                     </div>
@@ -278,10 +276,9 @@ export default function MapPage() {
                 ))}
               </div>
               <button onClick={() => setShowBooking(true)}
-                disabled={(selected.available_slots || 0) === 0}
                 className="btn btn-primary"
-                style={{ width: '100%', opacity: (selected.available_slots || 0) === 0 ? 0.4 : 1 }}>
-                {(selected.available_slots || 0) === 0 ? '❌ No Slots Available' : '🅿 Book Now'}
+                style={{ width: '100%' }}>
+                {(selected.available_slots || 0) === 0 ? 'Full right now · Reserve later' : '🅿 Reserve'}
               </button>
             </div>
 
@@ -305,8 +302,8 @@ export default function MapPage() {
               <div>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '8px' }}>Slot Availability</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                  {selected.slots.slice(0, 24).map(slot => (
-                    <div key={slot.id} style={{ padding: '6px 4px', borderRadius: '6px', background: slot.is_occupied ? 'rgba(239,35,60,0.1)' : 'rgba(6,214,160,0.1)', border: `1px solid ${slot.is_occupied ? 'rgba(239,35,60,0.3)' : 'rgba(6,214,160,0.3)'}`, textAlign: 'center', fontSize: '10px', fontWeight: '600', color: slot.is_occupied ? '#f87171' : '#06d6a0', fontFamily: 'var(--font-mono)' }}>
+                  {selected.slots.filter(s => s.is_active).slice(0, 24).map(slot => (
+                    <div key={slot.id} style={{ padding: '6px 4px', borderRadius: '6px', background: !slot.is_available_now ? 'rgba(239,35,60,0.1)' : 'rgba(6,214,160,0.1)', border: `1px solid ${!slot.is_available_now ? 'rgba(239,35,60,0.3)' : 'rgba(6,214,160,0.3)'}`, textAlign: 'center', fontSize: '10px', fontWeight: '600', color: !slot.is_available_now ? '#f87171' : '#06d6a0', fontFamily: 'var(--font-mono)' }}>
                       {slot.slot_number}
                     </div>
                   ))}

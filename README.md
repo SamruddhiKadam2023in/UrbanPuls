@@ -1,187 +1,134 @@
 # 🅿 TPMS — Traffic & Parking Management System
 
-Full-stack web application with real-time parking management, YOLO-based illegal parking detection, complaint system, traffic prediction, and emergency services.
+Parking reservations with **pay at the gate**, a vendor gate screen with QR check-in, citizen complaints with reward points, traffic insights and emergency calling. Built for Mumbai.
 
----
+## How parking works
 
-## 📁 Project Structure
+1. **Reserve.** The user picks a zone, a time window and a free slot. Nothing is paid online. The user gets a booking code and QR code.
+2. **Arrive.** Check-in opens 30 minutes before the start time. If the car hasn't arrived 15 minutes after the start time, the booking becomes a **no-show** and the slot is released.
+3. **Check in at the gate.** The vendor scans the QR code, or types the code or vehicle number, on the **Gate** screen.
+4. **Check out and pay.** The fare is worked out from the actual time parked (minimum 1 hour, then 30-minute steps), minus any reward points the user chose to spend. The customer pays cash or scans the zone's UPI QR code. The vendor records the payment and a PDF receipt is created.
+
+Walk-in cars without a booking can be checked in straight from the Gate screen.
+
+**Limits:** at most 2 active bookings per user. After 3 no-shows in 30 days, online booking is paused (walk-ins still work).
+
+## Roles
+
+| Role | Can do |
+|------|--------|
+| User | Reserve, extend and cancel bookings; report complaints; earn points |
+| Vendor | Everything a user can, plus manage their own zones, use the Gate screen, see stats. Vendor sign-ups need admin approval |
+| Police | Review verified complaints, use violation detection |
+| Admin | Everything: approve vendors, create staff accounts, verify complaints |
+
+Nobody can make themselves an admin at sign-up. Staff accounts are created by an admin (`POST /api/admin/users`), and the first admin with `create_admin.py`.
+
+## Project structure
 
 ```
 traffic-parking-ps/
 ├── backend/
-│   ├── core/           → DB, config, security (JWT)
-│   ├── models/         → SQLAlchemy models
-│   ├── routes/         → FastAPI route files
-│   ├── services/       → PDF, SMS services
-│   ├── yolo/           → YOLO detector + training script
-│   ├── main.py         → FastAPI app entry
-│   ├── seed.py         → DB seeder (run once)
-│   ├── requirements.txt
-│   └── .env            → fill in your API keys
-├── frontend/
-│   ├── src/
-│   │   ├── pages/      → Login, Map, Bookings, Complaints, etc.
-│   │   ├── components/ → Navbar, BookingModal, TrafficPanel
-│   │   ├── store/      → Redux slices
-│   │   └── utils/      → axios API, voice alerts
-│   └── package.json
-├── docker-compose.yml
-├── setup_windows.bat   → one-click setup
-└── start.bat           → one-click start
+│   ├── core/          config, database, security (JWT), rate limiting, time helpers
+│   ├── models/        SQLAlchemy models
+│   ├── routes/        auth, admin, zones, bookings, gate, complaints, detection, traffic, vendors, alerts
+│   ├── services/      booking rules, email, file storage, PDFs, SMS
+│   ├── migrations/    Alembic database migrations
+│   ├── tests/         pytest suite
+│   ├── yolo/          detector + training script
+│   ├── seed.py        demo data (development only)
+│   └── create_admin.py
+├── frontend/          React + Vite + Redux
+└── docker-compose.yml PostgreSQL, Redis, backend, nginx frontend
 ```
 
----
+## Local development (Windows)
 
-## ⚙️ Prerequisites — Install These First
+Needs Python 3.11+ and Node.js 20+.
 
-| Tool | Download |
-|------|----------|
-| Python 3.11+ | https://python.org/downloads |
-| Node.js 20+ | https://nodejs.org |
-| Docker Desktop | https://docker.com/products/docker-desktop |
-| Git | https://git-scm.com |
-
----
-
-## 🚀 Setup — Step by Step (Windows)
-
-### Option A — Automatic (Recommended)
 ```
-Double-click setup_windows.bat
+setup_windows.bat     (installs everything, creates the database, loads demo data)
+start.bat             (starts backend and frontend, opens http://localhost:5173)
 ```
-Then double-click `start.bat` to run both servers.
 
----
+Manual steps:
 
-### Option B — Manual
-
-#### 1. Start Database + Redis
-```bash
-docker-compose up -d db redis
-```
-Wait ~10 seconds for them to be ready.
-
-#### 2. Backend Setup
 ```bash
 cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements-dev.txt
+copy .env.example .env
+alembic upgrade head
 python seed.py
 uvicorn main:app --reload --port 8000
-```
 
-#### 3. Frontend Setup (new terminal)
-```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-#### 4. Open browser
-```
-http://localhost:5173
-```
+Development uses SQLite by default. Emails (verification and password reset links) are printed in the backend console until `SMTP_HOST` is set.
 
----
+**Demo logins** (development only, created by `seed.py`):
 
-## 🔑 Login Credentials (after seeding)
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@tpms.com | admin123 |
+| Vendor | vendor@tpms.com | vendor123 |
+| User | user@tpms.com | user123 |
+| Police | police@tpms.com | police123 |
 
-| Role   | Email               | Password  |
-|--------|---------------------|-----------|
-| Admin  | admin@tpms.com      | admin123  |
-| Vendor | vendor@tpms.com     | vendor123 |
-| User   | user@tpms.com       | user123   |
-
----
-
-## 🔧 Environment Variables
-
-Edit `backend/.env` and fill in your keys:
-
-```env
-# Database (auto-filled if using Docker)
-DATABASE_URL=postgresql://postgres:password@localhost:5432/tpms_db
-
-# Google Maps — get from console.cloud.google.com
-# (also replace YOUR_GOOGLE_MAPS_KEY in frontend/index.html)
-
-# Razorpay — get from dashboard.razorpay.com
-RAZORPAY_KEY_ID=rzp_test_xxx
-RAZORPAY_KEY_SECRET=xxx
-
-# Cloudinary — get from cloudinary.com (free tier)
-CLOUDINARY_CLOUD_NAME=xxx
-CLOUDINARY_API_KEY=xxx
-CLOUDINARY_API_SECRET=xxx
-
-# Twilio — get from twilio.com/console (free trial)
-TWILIO_ACCOUNT_SID=xxx
-TWILIO_AUTH_TOKEN=xxx
-TWILIO_PHONE_NUMBER=+1234567890
-POLICE_PHONE_NUMBER=+0987654321
-```
-
----
-
-## 🤖 YOLO Setup
-
-### Without trained model (dev mode)
-The system works immediately with mock detections. No model needed to test the UI.
-
-### With your trained model
-1. Go to https://roboflow.com → create project → label parking images
-2. Export as **YOLOv11** format
-3. Place dataset in `backend/yolo/dataset/`
-4. Train:
-```bash
-cd backend/yolo
-pip install ultralytics
-python train_yolo.py train
-```
-5. After training, the ONNX model is auto-copied to `backend/yolo/model.onnx`
-
----
-
-## 📡 API Documentation
-
-After starting backend, visit:
-```
-http://localhost:8000/docs
-```
-This shows all API endpoints with interactive testing (Swagger UI).
-
----
-
-## 🐳 Full Docker Deployment
+## Tests
 
 ```bash
-docker-compose up --build
+cd backend
+pytest
 ```
-Opens at `http://localhost:5173`
 
----
+To run them against PostgreSQL, set `TEST_DATABASE_URL=postgresql://...` first.
 
-## ✅ Features Implemented
+## Database changes
 
-| Feature | Status |
-|---------|--------|
-| JWT Auth (login/register/roles) | ✅ |
-| Live parking map (Google Maps) | ✅ |
-| Slot booking + Razorpay payment | ✅ |
-| PDF receipt generation | ✅ |
-| Traffic heatmap overlay | ✅ |
-| Peak hour prediction | ✅ |
-| YOLO illegal parking detection | ✅ |
-| Real-time WebSocket alerts | ✅ |
-| Geo-tagged complaints | ✅ |
-| Photo upload (Cloudinary) | ✅ |
-| Points system + redemption | ✅ |
-| Fine PDF generation | ✅ |
-| Police SMS notification (Twilio) | ✅ |
-| Admin dashboard + charts | ✅ |
-| Vendor zone management | ✅ |
-| Emergency one-tap calls | ✅ |
-| Hindi/English multilingual | ✅ |
-| Voice alerts (Web Speech API) | ✅ |
-| Docker + nginx deployment | ✅ |
+The schema is managed with Alembic. After changing a model:
+
+```bash
+alembic revision --autogenerate -m "describe the change"
+alembic upgrade head
+```
+
+`tests/test_migrations.py` fails if a model changes without a migration.
+
+## Configuration
+
+All settings are environment variables. See `backend/.env.example` for the full list. The important ones:
+
+| Variable | Purpose |
+|----------|---------|
+| `ENVIRONMENT` | `production` enforces a strong `SECRET_KEY` and PostgreSQL, hides API docs and disables demo detections |
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/db` in production |
+| `SECRET_KEY` | Random string of at least 32 characters |
+| `FRONTEND_URL`, `CORS_ORIGINS` | Public site address, used in email links and CORS |
+| `SMTP_*` | Email delivery for verification and password reset |
+| `RATE_LIMIT_STORAGE_URI` | `redis://...` when running several workers |
+| `BOOKING_GRACE_MINUTES`, `MAX_ACTIVE_RESERVATIONS`, `NO_SHOW_LIMIT` | Booking rules |
+| `CLOUDINARY_*` | Optional cloud storage for complaint photos (local disk otherwise) |
+| `TWILIO_*` | Optional SMS to police (skipped when empty) |
+
+Each parking zone can have a `upi_id` (e.g. `parking@okicici`). At checkout the Gate screen shows a UPI QR code for the exact amount, which pays the vendor directly.
+
+## Docker
+
+```bash
+docker compose up --build
+docker compose exec backend python create_admin.py --email you@example.com --name "Your Name"
+```
+
+Opens at http://localhost:5173. Migrations run automatically when the backend starts.
+
+## Violation detection (YOLO)
+
+Detection stays switched off in production until a trained model exists at `backend/yolo/model.onnx`. In development it returns fixed sample results. Only the `illegal_parking` label counts as a violation. To train a model, see `backend/yolo/train_yolo.py`.
+
+## API docs
+
+http://localhost:8000/docs (not available when `ENVIRONMENT=production`).

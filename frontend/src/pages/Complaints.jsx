@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 import { fetchMyComplaints } from '../store/slices/complaintsSlice'
-import api from '../utils/api'
+import api, { errorMessage } from '../utils/api'
 
 const TYPES = [
   { value: 'illegal_parking',    label: '🚫 Illegal Parking'       },
@@ -27,7 +27,6 @@ export default function Complaints() {
   const [form, setForm] = useState({ complaint_type: 'illegal_parking', description: '', latitude: '', longitude: '' })
   const [photo, setPhoto] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [redeemPts, setRedeemPts] = useState(10)
 
   useEffect(() => { dispatch(fetchMyComplaints()) }, [])
 
@@ -51,15 +50,8 @@ export default function Complaints() {
       toast.success('Complaint submitted!')
       setForm({ complaint_type: 'illegal_parking', description: '', latitude: '', longitude: '' })
       setPhoto(null); dispatch(fetchMyComplaints()); setTab('my')
-    } catch (e) { toast.error(e.response?.data?.detail || 'Submission failed') }
+    } catch (e) { toast.error(errorMessage(e, 'Submission failed')) }
     finally { setSubmitting(false) }
-  }
-
-  const handleRedeem = async () => {
-    try {
-      const res = await api.post(`/complaints/redeem-points?points=${redeemPts}`)
-      toast.success(`₹${res.data.discount_amount} discount! ${res.data.remaining_points} pts left.`)
-    } catch (e) { toast.error(e.response?.data?.detail || 'Failed') }
   }
 
   return (
@@ -82,12 +74,7 @@ export default function Complaints() {
                 <p style={{ fontSize: '13px', fontWeight: '600', color: '#a78bfa' }}>{user.points} points</p>
                 <p style={{ fontSize: '11px', color: 'var(--c-text3)' }}>= ₹{(user.points * 0.5).toFixed(0)} discount</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input type="number" min="10" max={user.points} step="10" value={redeemPts}
-                  onChange={e => setRedeemPts(Number(e.target.value))}
-                  className="input" style={{ width: '64px', padding: '6px 8px', fontSize: '12px' }} />
-                <button onClick={handleRedeem} className="btn btn-sm" style={{ background: 'rgba(167,139,250,0.2)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>Redeem</button>
-              </div>
+              <p style={{ fontSize: '11px', color: 'var(--c-text3)', maxWidth: '160px' }}>Use them when you reserve parking</p>
             </div>
           )}
         </div>
@@ -134,9 +121,9 @@ export default function Complaints() {
                 <span style={{ fontSize: '24px' }}>{photo ? '✅' : '📸'}</span>
                 <div>
                   <p style={{ fontSize: '13px', color: 'var(--c-text)', fontWeight: '500' }}>{photo ? photo.name : 'Click to upload photo/video'}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--c-text3)', marginTop: '2px' }}>Supports JPG, PNG, MP4</p>
+                  <p style={{ fontSize: '11px', color: 'var(--c-text3)', marginTop: '2px' }}>JPG, PNG, WebP or MP4, up to 10 MB</p>
                 </div>
-                <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={e => setPhoto(e.target.files[0])} />
+                <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4" style={{ display: 'none' }} onChange={e => setPhoto(e.target.files[0])} />
               </label>
             </div>
             <button className="btn btn-primary btn-lg" type="submit" disabled={submitting} style={{ width: '100%' }}>
@@ -161,7 +148,7 @@ export default function Complaints() {
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,209,102,0.1)', border: '1px solid rgba(255,209,102,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>⚠️</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--c-text)', textTransform: 'capitalize' }}>{c.complaint_type?.replace('_', ' ')}</span>
+                    <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--c-text)', textTransform: 'capitalize' }}>{c.complaint_type?.replaceAll('_', ' ')}</span>
                     <span className={`badge ${STATUS_BADGE[c.status] || 'badge-blue'}`}>{c.status}</span>
                     {c.points_awarded > 0 && <span className="badge badge-purple">+{c.points_awarded} pts</span>}
                   </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 import { useDropzone } from 'react-dropzone'
-import api from '../utils/api'
+import api, { errorMessage, wsUrl } from '../utils/api'
 import { addViolation, setWsConnected } from '../store/slices/detectionSlice'
 import { speakViolationAlert } from '../utils/voice'
 import i18n from '../i18n'
@@ -14,9 +14,14 @@ export default function Detection() {
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [file, setFile] = useState(null)
+  const [status, setStatus] = useState(null)   // { model_loaded, mock_mode, active }
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/api/detect/ws')
+    api.get('/detect/status').then(r => setStatus(r.data)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const ws = new WebSocket(wsUrl('/detect/ws'))
     ws.onopen  = () => dispatch(setWsConnected(true))
     ws.onclose = () => dispatch(setWsConnected(false))
     ws.onmessage = (evt) => {
@@ -37,7 +42,7 @@ export default function Detection() {
     setFile(f); setPreview(URL.createObjectURL(f)); setDetections([])
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/*': [] }, maxFiles: 1 })
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/jpeg': [], 'image/png': [], 'image/webp': [] }, maxFiles: 1, maxSize: 10 * 1024 * 1024 })
 
   const handleDetect = async () => {
     if (!file) return toast.error('Upload an image first')
@@ -46,9 +51,9 @@ export default function Detection() {
       const fd = new FormData(); fd.append('file', file)
       const res = await api.post('/detect/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setDetections(res.data.detections)
-      if (res.data.is_violation) { toast.error(`🚨 ${res.data.detections.length} violation(s) found!`); speakViolationAlert(i18n.language) }
+      if (res.data.is_violation) { toast.error(`🚨 ${res.data.violations.length} violation(s) found!`); speakViolationAlert(i18n.language) }
       else toast.success(`✅ ${res.data.count} objects detected. No violations.`)
-    } catch { toast.error('Detection failed') }
+    } catch (e) { toast.error(errorMessage(e, 'Detection failed')) }
     finally { setLoading(false) }
   }
 
@@ -72,7 +77,18 @@ export default function Detection() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      {status && !status.active && (
+        <div style={{ background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.3)', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-text2)' }}>
+          🔒 Violation detection is not active yet. It will be switched on once a model trained on images from our parking sites is installed.
+        </div>
+      )}
+      {status?.mock_mode && (
+        <div style={{ background: 'rgba(255,209,102,0.08)', border: '1px solid rgba(255,209,102,0.25)', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#ffd166' }}>
+          Demo mode: no trained model is installed, so results are fixed samples. This mode is off in production.
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
         {/* Upload panel */}
         <div className="card" style={{ padding: '24px' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Upload Image</h3>
@@ -95,7 +111,7 @@ export default function Detection() {
                 </div>
               )}
           </div>
-          <button className="btn btn-primary" onClick={handleDetect} disabled={loading || !file}
+          <button className="btn btn-primary" onClick={handleDetect} disabled={loading || !file || status?.active === false}
             style={{ width: '100%', marginTop: '14px' }}>
             {loading
               ? <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -119,7 +135,7 @@ export default function Detection() {
             : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {detections.map((d, i) => {
-                  const isViolation = d.label.includes('illegal') || d.label.includes('violation')
+                  const isViolation = d.label === 'illegal_parking'
                   return (
                     <div key={i} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -129,7 +145,7 @@ export default function Detection() {
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>{isViolation ? '🚨' : '✅'}</span>
-                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--c-text)', textTransform: 'capitalize' }}>{d.label.replace('_', ' ')}</span>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--c-text)', textTransform: 'capitalize' }}>{d.label.replaceAll('_', ' ')}</span>
                       </div>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: isViolation ? '#f87171' : '#06d6a0', fontWeight: '600' }}>
                         {(d.confidence * 100).toFixed(1)}%
@@ -137,9 +153,9 @@ export default function Detection() {
                     </div>
                   )
                 })}
-                {detections.some(d => d.label.includes('illegal')) && (
+                {detections.some(d => d.label === 'illegal_parking') && (
                   <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(239,35,60,0.1)', border: '1px solid rgba(239,35,60,0.25)', marginTop: '8px' }}>
-                    <p style={{ fontSize: '12px', color: '#f87171', fontWeight: '500' }}>🚨 Violation detected — flagged for police notification</p>
+                    <p style={{ fontSize: '12px', color: '#f87171', fontWeight: '500' }}>🚨 Illegal parking detected. Live alert sent to staff.</p>
                   </div>
                 )}
               </div>

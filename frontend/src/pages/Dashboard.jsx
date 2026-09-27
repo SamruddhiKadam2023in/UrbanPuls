@@ -1,60 +1,70 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
-import api from '../utils/api'
+import toast from 'react-hot-toast'
+import api, { errorMessage } from '../utils/api'
+import { fmtDateTime, rupees } from '../utils/format'
 
 const COLORS = ['#3b82f6', '#06d6a0', '#f72585', '#ffd166', '#a78bfa']
 
 export default function Dashboard() {
   const user = useSelector(s => s.auth.user)
+  const isAdmin = user?.role === 'admin'
   const [complaints, setComplaints] = useState([])
-  const [vendorStats, setVendorStats] = useState(null)
+  const [vendorRequests, setVendorRequests] = useState([])
+  const [stats, setStats] = useState(null)
   const [trafficSummary, setTrafficSummary] = useState([])
   const [tab, setTab] = useState('overview')
 
   useEffect(() => {
-    if (user?.role === 'admin') api.get('/complaints/?status=pending').then(r => setComplaints(r.data)).catch(() => {})
-    if (user?.role === 'vendor' || user?.role === 'admin') api.get('/vendors/stats').then(r => setVendorStats(r.data)).catch(() => {})
+    api.get('/vendors/stats').then(r => setStats(r.data)).catch(() => {})
     api.get('/traffic/summary').then(r => setTrafficSummary(r.data)).catch(() => {})
-  }, [])
+    if (isAdmin) {
+      api.get('/complaints/', { params: { status: 'pending' } }).then(r => setComplaints(r.data)).catch(() => {})
+      api.get('/admin/users', { params: { vendor_requested: true } }).then(r => setVendorRequests(r.data)).catch(() => {})
+    }
+  }, [isAdmin])
 
-  const handleVerify = async (id) => { await api.patch(`/complaints/${id}/verify`); setComplaints(c => c.filter(x => x.id !== id)) }
-  const handleReject = async (id) => { await api.patch(`/complaints/${id}/reject`); setComplaints(c => c.filter(x => x.id !== id)) }
+  const reviewComplaint = async (id, action) => {
+    try {
+      await api.patch(`/complaints/${id}/${action}`)
+      setComplaints(c => c.filter(x => x.id !== id))
+      toast.success(action === 'verify' ? 'Verified: points awarded and fine created' : 'Complaint rejected')
+    } catch (e) { toast.error(errorMessage(e)) }
+  }
+
+  const reviewVendor = async (u, approve) => {
+    try {
+      await api.patch(`/admin/users/${u.id}`, approve ? { role: 'vendor' } : { vendor_requested: false })
+      setVendorRequests(list => list.filter(x => x.id !== u.id))
+      toast.success(approve ? `${u.name} is now a vendor` : 'Request declined')
+    } catch (e) { toast.error(errorMessage(e)) }
+  }
 
   const pieData = Object.entries(
     complaints.reduce((acc, c) => { acc[c.complaint_type] = (acc[c.complaint_type] || 0) + 1; return acc }, {})
-  ).map(([name, value]) => ({ name: name.replace('_', ' '), value }))
+  ).map(([name, value]) => ({ name: name.replaceAll('_', ' '), value }))
 
-  const CustomTooltip = ({ active, payload }) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '8px', padding: '10px 14px' }}>
-        <p style={{ fontSize: '13px', color: 'var(--c-text)' }}>{payload[0].name}: <strong>{payload[0].value}</strong></p>
-      </div>
-    )
-  }
+  const tabs = [['overview', '📈 Overview']]
+  if (isAdmin) tabs.push(['complaints', `⚠️ Complaints (${complaints.length})`], ['vendors', `🏢 Vendor requests (${vendorRequests.length})`])
 
   return (
     <div className="page-wrap fade-in">
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #a78bfa, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', boxShadow: '0 8px 24px rgba(167,139,250,0.35)' }}>📊</div>
-          <div>
-            <h1 className="section-header" style={{ fontSize: '26px' }}>Dashboard</h1>
-            <p className="section-sub">Analytics, insights & admin controls</p>
-          </div>
-        </div>
+        <h1 className="section-header" style={{ fontSize: '26px' }}>📊 Dashboard</h1>
+        <p className="section-sub">{isAdmin ? 'All zones, complaints and account requests' : 'Your parking zones'}</p>
       </div>
 
-      {/* Vendor stats */}
-      {vendorStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
           {[
-            { label: 'Your Zones',     value: vendorStats.total_zones,                color: '#3b82f6', bg: 'rgba(59,130,246,0.08)',   border: 'rgba(59,130,246,0.2)' },
-            { label: 'Total Bookings', value: vendorStats.total_bookings,             color: '#06d6a0', bg: 'rgba(6,214,160,0.08)',    border: 'rgba(6,214,160,0.2)' },
-            { label: 'Revenue (₹)',    value: `${vendorStats.total_revenue?.toFixed(0)}`, color: '#ffd166', bg: 'rgba(255,209,102,0.08)', border: 'rgba(255,209,102,0.2)' },
+            { label: isAdmin ? 'Zones' : 'Your zones', value: stats.total_zones,          color: '#3b82f6' },
+            { label: 'Total bookings',                 value: stats.total_bookings,       color: '#06d6a0' },
+            { label: 'Parked now',                     value: stats.parked_now,           color: '#a78bfa' },
+            { label: 'Revenue collected',              value: rupees(stats.total_revenue), color: '#ffd166' },
+            { label: 'No-shows',                       value: stats.no_shows,             color: '#f87171' },
           ].map(s => (
-            <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: '16px', padding: '20px' }}>
+            <div key={s.label} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', borderRadius: '16px', padding: '18px' }}>
               <div className="stat-num" style={{ color: s.color }}>{s.value}</div>
               <div className="stat-label">{s.label}</div>
             </div>
@@ -62,76 +72,92 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', background: 'var(--c-bg2)', padding: '4px', borderRadius: '12px', marginBottom: '24px', width: 'fit-content' }}>
-        {[['overview', '📈 Overview'], ['complaints', '⚠️ Complaints']].map(([k, l]) => (
+      <div style={{ display: 'flex', gap: '4px', background: 'var(--c-bg2)', padding: '4px', borderRadius: '12px', marginBottom: '24px', width: 'fit-content', flexWrap: 'wrap' }}>
+        {tabs.map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className="btn btn-sm"
-            style={{ background: tab === k ? 'var(--c-surface2)' : 'transparent', color: tab === k ? 'var(--c-text)' : 'var(--c-text2)', border: 'none', boxShadow: tab === k ? '0 2px 8px rgba(0,0,0,0.3)' : 'none' }}>
+            style={{ background: tab === k ? 'var(--c-surface2)' : 'transparent', color: tab === k ? 'var(--c-text)' : 'var(--c-text2)', border: 'none' }}>
             {l}
           </button>
         ))}
       </div>
 
       {tab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
           <div className="card" style={{ padding: '24px' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Traffic Density by Zone</h3>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Traffic density by zone</h3>
             {trafficSummary.length === 0
               ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>No traffic data yet</div>
               : <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={trafficSummary} margin={{ left: -20, right: 0 }}>
                     <XAxis dataKey="zone_name" tick={{ fontSize: 10, fill: 'var(--c-text2)' }} />
-                    <YAxis domain={[0,1]} tick={{ fontSize: 10, fill: 'var(--c-text2)' }} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="avg_density" fill="#3b82f6" radius={[6,6,0,0]} />
+                    <YAxis domain={[0, 1]} tick={{ fontSize: 10, fill: 'var(--c-text2)' }} />
+                    <Tooltip formatter={v => [`${Math.round(v * 100)}%`, 'Density']} contentStyle={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }} />
+                    <Bar dataKey="avg_density" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-            }
+                </ResponsiveContainer>}
           </div>
-          <div className="card" style={{ padding: '24px' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Complaint Breakdown</h3>
-            {pieData.length === 0
-              ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>No complaint data</div>
-              : <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${(percent*100).toFixed(0)}%`} labelLine={false}>
-                      {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', color: 'var(--c-text2)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-            }
-          </div>
+          {isAdmin && (
+            <div className="card" style={{ padding: '24px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Pending complaints by type</h3>
+              {pieData.length === 0
+                ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>No pending complaints</div>
+                : <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                        {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', color: 'var(--c-text2)' }} />
+                    </PieChart>
+                  </ResponsiveContainer>}
+            </div>
+          )}
         </div>
       )}
 
-      {tab === 'complaints' && user?.role === 'admin' && (
+      {tab === 'complaints' && isAdmin && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '4px' }}>{complaints.length} pending complaint(s) awaiting review</p>
           {complaints.length === 0 && (
             <div className="card" style={{ padding: '50px', textAlign: 'center' }}>
-              <p style={{ fontSize: '32px', marginBottom: '12px' }}>🎉</p>
-              <p style={{ color: 'var(--c-text2)' }}>All complaints have been reviewed!</p>
+              <p style={{ color: 'var(--c-text2)' }}>All complaints have been reviewed.</p>
             </div>
           )}
           {complaints.map(c => (
             <div key={c.id} className="card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,209,102,0.1)', border: '1px solid rgba(255,209,102,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>⚠️</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: '600', fontSize: '14px', color: 'var(--c-text)', textTransform: 'capitalize' }}>{c.complaint_type?.replace('_', ' ')}</span>
-                    <span className="badge badge-yellow">Pending</span>
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                  <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--c-text)', textTransform: 'capitalize', marginBottom: '6px' }}>{c.complaint_type.replaceAll('_', ' ')}</div>
                   <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '4px' }}>{c.description || 'No description'}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--c-text3)', fontFamily: 'var(--font-mono)' }}>📍 {c.latitude}, {c.longitude}</p>
-                  {c.photo_url && <img src={c.photo_url} alt="evidence" style={{ height: '80px', marginTop: '10px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--c-border)' }} />}
+                  <p style={{ fontSize: '11px', color: 'var(--c-text3)', fontFamily: 'var(--font-mono)' }}>
+                    <a href={`https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=18/${c.latitude}/${c.longitude}`} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>📍 {c.latitude}, {c.longitude}</a> · {fmtDateTime(c.created_at)}
+                  </p>
+                  {c.photo_url && <a href={c.photo_url} target="_blank" rel="noreferrer"><img src={c.photo_url} alt="Evidence" style={{ height: '90px', marginTop: '10px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--c-border)' }} /></a>}
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                  <button onClick={() => handleVerify(c.id)} className="btn btn-accent btn-sm">✓ Verify</button>
-                  <button onClick={() => handleReject(c.id)} className="btn btn-ghost btn-sm">✕ Reject</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => reviewComplaint(c.id, 'verify')} className="btn btn-accent btn-sm">✓ Verify</button>
+                  <button onClick={() => reviewComplaint(c.id, 'reject')} className="btn btn-ghost btn-sm">✕ Reject</button>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'vendors' && isAdmin && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {vendorRequests.length === 0 && (
+            <div className="card" style={{ padding: '50px', textAlign: 'center' }}>
+              <p style={{ color: 'var(--c-text2)' }}>No vendor requests waiting.</p>
+            </div>
+          )}
+          {vendorRequests.map(u => (
+            <div key={u.id} className="card" style={{ padding: '18px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--c-text)' }}>{u.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--c-text2)' }}>{u.email}{u.phone ? ` · ${u.phone}` : ''}</div>
+                {!u.email_verified && <span className="badge badge-yellow" style={{ marginTop: '6px' }}>Email not verified</span>}
+              </div>
+              <button onClick={() => reviewVendor(u, true)} className="btn btn-accent btn-sm">Approve</button>
+              <button onClick={() => reviewVendor(u, false)} className="btn btn-ghost btn-sm">Decline</button>
             </div>
           ))}
         </div>

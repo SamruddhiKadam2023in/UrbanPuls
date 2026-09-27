@@ -53,7 +53,7 @@ export default function Profile() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
               { label: t('profile.name'),   value: user.name,                icon: '👤' },
-              { label: t('profile.email'),  value: user.email,               icon: '📧' },
+              { label: t('profile.email'),  value: `${user.email} · ${user.email_verified ? 'verified ✓' : 'not verified'}`, icon: '📧' },
               { label: t('profile.phone'),  value: user.phone || t('profile.not_set'), icon: '📱' },
               { label: t('profile.role'),   value: rc.label,                 icon: rc.emoji },
               { label: t('profile.points'), value: `${user.points || 0} ${t('profile.points')}`, icon: '⭐' },

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { fetchZones } from '../store/slices/zonesSlice'
+import { hasRole } from '../utils/roles'
 
 export default function Home() {
   const dispatch   = useDispatch()
@@ -23,10 +24,11 @@ export default function Home() {
     { to: '/map',        emoji: '🗺️', title: t('home.actions.map'),       desc: t('home.actions.map_desc'),       color: '#3b82f6', glow: 'rgba(59,130,246,0.2)'  },
     { to: '/bookings',   emoji: '📋', title: t('home.actions.bookings'),   desc: t('home.actions.bookings_desc'), color: '#06d6a0', glow: 'rgba(6,214,160,0.2)'   },
     { to: '/complaints', emoji: '⚠️', title: t('home.actions.report'),     desc: t('home.actions.report_desc'),   color: '#ffd166', glow: 'rgba(255,209,102,0.2)' },
-    { to: '/detection',  emoji: '🔍', title: t('home.actions.yolo'),       desc: t('home.actions.yolo_desc'),     color: '#f72585', glow: 'rgba(247,37,133,0.2)'  },
+    { to: '/detection',  emoji: '🔍', title: t('home.actions.yolo'),       desc: t('home.actions.yolo_desc'),     color: '#f72585', glow: 'rgba(247,37,133,0.2)', area: 'detection' },
     { to: '/emergency',  emoji: '🚨', title: t('home.actions.emergency'),  desc: t('home.actions.emergency_desc'),color: '#ef233c', glow: 'rgba(239,35,60,0.2)'   },
-    { to: '/dashboard',  emoji: '📊', title: t('home.actions.analytics'), desc: t('home.actions.analytics_desc'),color: '#a78bfa', glow: 'rgba(167,139,250,0.2)' },
-  ]
+    { to: '/dashboard',  emoji: '📊', title: t('home.actions.analytics'), desc: t('home.actions.analytics_desc'),color: '#a78bfa', glow: 'rgba(167,139,250,0.2)', area: 'staff' },
+    { to: '/gate',       emoji: '🚧', title: 'Gate',                       desc: 'Check cars in and out',         color: '#06d6a0', glow: 'rgba(6,214,160,0.2)', area: 'gate' },
+  ].filter(a => !a.area || hasRole(user, a.area))
 
   const stats = [
     { label: t('home.zones'),     value: zones.length,  suffix: '',  color: '#3b82f6', bg: 'rgba(59,130,246,0.08)',   border: 'rgba(59,130,246,0.2)'  },
@@ -65,9 +67,9 @@ export default function Home() {
             <p style={{ fontSize: '14px', fontWeight: '600', color: '#a78bfa' }}>
               <strong>{user.points} {t('home.redeem_msg')}</strong>
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--c-text2)', marginTop: '2px' }}>{t('home.redeem_sub')}</p>
+            <p style={{ fontSize: '12px', color: 'var(--c-text2)', marginTop: '2px' }}>Use them for a discount when you reserve parking</p>
           </div>
-          <Link to="/complaints" className="btn btn-sm" style={{ marginLeft: 'auto', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', flexShrink: 0 }}>{t('home.redeem_btn')}</Link>
+          <Link to="/map" className="btn btn-sm" style={{ marginLeft: 'auto', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', flexShrink: 0 }}>{t('home.redeem_btn')}</Link>
         </div>
       )}
 

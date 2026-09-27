@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import api from '../../utils/api'
+import api, { errorMessage } from '../../utils/api'
 
 export const login = createAsyncThunk('auth/login', async ({ email, password }, { rejectWithValue }) => {
   try {
@@ -10,7 +10,7 @@ export const login = createAsyncThunk('auth/login', async ({ email, password }, 
     localStorage.setItem('token', res.data.access_token)
     return res.data
   } catch (e) {
-    return rejectWithValue(e.response?.data?.detail || 'Login failed')
+    return rejectWithValue(errorMessage(e, 'Login failed'))
   }
 })
 
@@ -19,7 +19,7 @@ export const register = createAsyncThunk('auth/register', async (data, { rejectW
     const res = await api.post('/auth/register', data)
     return res.data
   } catch (e) {
-    return rejectWithValue(e.response?.data?.detail || 'Registration failed')
+    return rejectWithValue(errorMessage(e, 'Registration failed'))
   }
 })
 
@@ -50,9 +50,9 @@ const authSlice = createSlice({
       .addCase(login.rejected,  (s, a) => { s.loading = false; s.error = a.payload })
       .addCase(register.pending,   (s) => { s.loading = true; s.error = null })
       .addCase(register.fulfilled, (s) => { s.loading = false })
-      .addCase(register.rejected,  (s, a) => { s.loading = false; s.error = a.payload })
+      .addCase(register.rejected,  (s) => { s.loading = false })
       .addCase(fetchMe.fulfilled, (s, a) => { s.user = a.payload })
-      .addCase(fetchMe.rejected,  (s) => { s.token = null; localStorage.removeItem('token') })
+      .addCase(fetchMe.rejected,  (s) => { s.token = null; s.user = null; localStorage.removeItem('token') })
   }
 })
 

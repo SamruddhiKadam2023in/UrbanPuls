@@ -4,13 +4,17 @@ import { useState, useEffect, useRef } from 'react'
 import { logout } from '../../store/slices/authSlice'
 import i18n from '../../i18n'
 import NotificationBell from './NotificationBell'
+import { hasRole } from '../../utils/roles'
 
+// area: only shown to roles allowed in that area (see utils/roles.js)
 const NAV = [
   { to: '/map',        icon: '🗺️', label: 'Live Map'   },
   { to: '/bookings',   icon: '📋', label: 'Bookings'   },
+  { to: '/gate',       icon: '🚧', label: 'Gate',       area: 'gate' },
   { to: '/complaints', icon: '⚠️', label: 'Complaints' },
-  { to: '/detection',  icon: '🔍', label: 'YOLO AI'    },
-  { to: '/analytics',  icon: '📊', label: 'Analytics'  },
+  { to: '/detection',  icon: '🔍', label: 'YOLO AI',    area: 'detection' },
+  { to: '/analytics',  icon: '📊', label: 'Analytics',  area: 'staff' },
+  { to: '/dashboard',  icon: '⚙️', label: 'Admin',      area: 'staff' },
   { to: '/emergency',  icon: '🚨', label: 'Emergency'  },
 ]
 
@@ -31,10 +35,7 @@ export default function Navbar() {
   const [darkMode,    setDarkMode]    = useState(localStorage.getItem('theme') !== 'light')
   const langRef = useRef(null)
 
-  const links = [...NAV]
-  if (user?.role === 'admin' || user?.role === 'vendor') {
-    links.push({ to: '/dashboard', icon: '⚙️', label: 'Admin' })
-  }
+  const links = NAV.filter(l => !l.area || hasRole(user, l.area))
 
   const isActive = p => location.pathname === p
   const handleLogout = () => { dispatch(logout()); navigate('/login') }

@@ -13,7 +13,9 @@ export const cancelBooking = createAsyncThunk('bookings/cancel', async (id) => {
 const bookingsSlice = createSlice({
   name: 'bookings',
   initialState: { list: [], loading: false },
-  reducers: {},
+  reducers: {
+    bookingUpdated(s, a) { s.list = s.list.map(b => b.id === a.payload.id ? a.payload : b) },
+  },
   extraReducers: (b) => {
     b.addCase(fetchMyBookings.pending,   (s) => { s.loading = true })
      .addCase(fetchMyBookings.fulfilled, (s, a) => { s.loading = false; s.list = a.payload })
@@ -23,4 +25,5 @@ const bookingsSlice = createSlice({
      })
   }
 })
+export const { bookingUpdated } = bookingsSlice.actions
 export default bookingsSlice.reducer
