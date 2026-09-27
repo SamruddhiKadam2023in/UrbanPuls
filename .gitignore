@@ -1,0 +1,32 @@
+# Secrets
+.env
+!.env.example
+
+# Local data
+*.db
+*.sqlite3
+backend/receipts/
+backend/fines/
+backend/uploads/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# YOLO training artefacts
+backend/yolo/dataset/
+backend/yolo/tpms_detection/
+*.pt
+
+# Node / build
+node_modules/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

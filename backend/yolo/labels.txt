@@ -1,0 +1,12 @@
+person
+bicycle
+car
+motorcycle
+bus
+truck
+traffic light
+stop sign
+parking meter
+illegal_parking
+road_blockage
+vehicle
