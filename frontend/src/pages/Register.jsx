@@ -26,7 +26,7 @@ export default function Register() {
     <AuthShell title={<span className="gradient-text-pink">{t('auth.register_title')}</span>} subtitle={t('auth.register_sub')}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {[
-          { key: 'name',     label: t('auth.name'),     type: 'text',     ph: 'Full name',         req: true,  ac: 'name' },
+          { key: 'name',     label: t('auth.name'),     type: 'text',     ph: t('auth.name', 'Full name'),         req: true,  ac: 'name' },
           { key: 'email',    label: t('auth.email'),    type: 'email',    ph: 'you@example.com',   req: true,  ac: 'email' },
           { key: 'phone',    label: t('auth.phone'),    type: 'tel',      ph: '+91 98765 43210',   req: false, ac: 'tel' },
           { key: 'password', label: t('auth.password'), type: 'password', ph: '••••••••',          req: true,  ac: 'new-password' },
@@ -36,18 +36,18 @@ export default function Register() {
             <input className="input" type={f.type} required={f.req} autoComplete={f.ac} placeholder={f.ph} value={form[f.key]}
               minLength={f.key === 'password' ? 8 : undefined}
               onChange={e => setForm({ ...form, [f.key]: e.target.value })} />
-            {f.key === 'password' && <p style={{ fontSize: '11px', color: 'var(--c-text3)', marginTop: '4px' }}>At least 8 characters, with a letter and a number</p>}
+            {f.key === 'password' && <p style={{ fontSize: '11px', color: 'var(--c-text3)', marginTop: '4px' }}>{t('auth.password_rules', 'At least 8 characters, with a letter and a number')}</p>}
           </div>
         ))}
         <div>
           <label className="label">{t('auth.role')}</label>
           <select className="input" value={form.account_type} onChange={e => setForm({ ...form, account_type: e.target.value })}>
             <option value="user">{t('auth.user_role')}</option>
-            <option value="vendor">{t('auth.vendor_role')} (needs approval)</option>
+            <option value="vendor">{t('auth.vendor_role')} ({t('auth.needs_approval', 'needs approval')})</option>
           </select>
           {form.account_type === 'vendor' && (
             <p style={{ fontSize: '11px', color: 'var(--c-text3)', marginTop: '4px' }}>
-              You can use the app as a regular user until an administrator approves your vendor account.
+              {t('auth.vendor_hint', 'You can use the app as a regular user until an administrator approves your vendor account.')}
             </p>
           )}
         </div>

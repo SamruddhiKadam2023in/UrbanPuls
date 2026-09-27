@@ -12,6 +12,7 @@ from core.security import get_current_user, require_roles, require_verified
 from models.activity import ComplaintEvent
 from models.booking import Complaint, ComplaintStatus, ComplaintType
 from models.user import User, UserRole
+from services.messages import complaint_type, render
 from services.notify import notify, notify_role
 from services.pdf_service import generate_fine_pdf
 from services.sms_service import notify_police
@@ -22,7 +23,12 @@ router = APIRouter()
 reviewers = require_roles(UserRole.admin, UserRole.police)
 admin_only = require_roles(UserRole.admin)
 
-TYPE_LABELS = {t: t.value.replace("_", " ").capitalize() for t in ComplaintType}
+def _type(c: Complaint):
+    return lambda lang: complaint_type(c.complaint_type.value, lang)
+
+def _note(note: str | None):
+    note = (note or "").strip()
+    return lambda lang: render("note_suffix", lang, note=note)[1] if note else ""
 
 class ReviewNote(BaseModel):
     note: str = Field(default="", max_length=1000)
@@ -78,8 +84,8 @@ async def submit_complaint(
     db.add(complaint)
     _add_event(db, complaint, ComplaintStatus.pending, current_user, "Reported")
     db.flush()
-    notify_role(db, [UserRole.admin], "complaint", "New complaint to review",
-                f"{TYPE_LABELS[complaint_type]} reported by {current_user.name}.", link="/dashboard")
+    notify_role(db, [UserRole.admin], "complaint", "complaint_new", link="/dashboard",
+                type=_type(complaint), name=current_user.name)
     db.commit()
     return {"message": "Complaint submitted", "complaint_id": complaint.id}
 
@@ -124,12 +130,10 @@ def verify_complaint(complaint_id: int, data: ReviewNote | None = None, db: Sess
         log.exception("Fine PDF generation failed for complaint %s", complaint.id)
     complaint.police_notified = notify_police(complaint)
 
-    notify(db, reporter, "complaint", "Complaint verified",
-           f"Your {TYPE_LABELS[complaint.complaint_type].lower()} report was verified. "
-           f"You earned {settings.COMPLAINT_REWARD_POINTS} reward points.", link="/complaints", email=True)
-    notify_role(db, [UserRole.police], "complaint", "Verified complaint needs action",
-                f"{TYPE_LABELS[complaint.complaint_type]} at {complaint.latitude:.5f}, {complaint.longitude:.5f}.",
-                link="/police")
+    notify(db, reporter, "complaint", "complaint_verified", link="/complaints", email=True,
+           type=_type(complaint), points=settings.COMPLAINT_REWARD_POINTS)
+    notify_role(db, [UserRole.police], "complaint", "complaint_police", link="/police",
+                type=_type(complaint), lat=f"{complaint.latitude:.5f}", lng=f"{complaint.longitude:.5f}")
     db.commit()
     return {"message": "Complaint verified and points awarded", "fine_generated": complaint.fine_generated}
 
@@ -140,9 +144,8 @@ def reject_complaint(complaint_id: int, data: ReviewNote | None = None, db: Sess
     note = data.note if data else None
     _add_event(db, complaint, ComplaintStatus.rejected, admin, note)
     complaint.reviewed_by = admin.id
-    notify(db, complaint.user, "complaint", "Complaint not accepted",
-           f"Your {TYPE_LABELS[complaint.complaint_type].lower()} report could not be verified."
-           + (f" Reason: {note.strip()}" if note and note.strip() else ""), link="/complaints")
+    notify(db, complaint.user, "complaint", "complaint_rejected", link="/complaints",
+           type=_type(complaint), note=_note(note))
     db.commit()
     return {"message": "Complaint rejected"}
 
@@ -152,9 +155,8 @@ def resolve_complaint(complaint_id: int, data: ReviewNote | None = None, db: Ses
     complaint = _locked(db, complaint_id, ComplaintStatus.verified)
     note = data.note if data else None
     _add_event(db, complaint, ComplaintStatus.resolved, user, note)
-    notify(db, complaint.user, "complaint", "Complaint resolved",
-           f"Action has been taken on your {TYPE_LABELS[complaint.complaint_type].lower()} report."
-           + (f" Note: {note.strip()}" if note and note.strip() else ""), link="/complaints")
+    notify(db, complaint.user, "complaint", "complaint_resolved", link="/complaints",
+           type=_type(complaint), note=_note(note))
     db.commit()
     return {"message": "Complaint resolved"}
 

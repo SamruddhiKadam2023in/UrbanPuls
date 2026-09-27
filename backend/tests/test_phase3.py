@@ -181,3 +181,22 @@ def test_admin_search_and_vendor_approval_notifies(client, db):
     client.patch(f"/api/admin/users/{shop.id}", headers=ha, json={"role": "vendor"})
     hs = auth(client, "shopkeeper@test.com")
     assert client.get("/api/notifications/", headers=hs).json()["items"][0]["title"] == "Vendor account approved"
+
+# ── Notification language ─────────────────────────────────────────────────────
+def test_message_catalog_placeholders_match():
+    import string
+    from services.messages import MESSAGES
+    fields = lambda s: {f for _, f, _, _ in string.Formatter().parse(s) if f}
+    for key, langs in MESSAGES.items():
+        assert set(langs) == {"en", "hi", "mr"}, key
+        for lang, (title, body) in langs.items():
+            assert fields(title) == fields(langs["en"][0]) and fields(body) == fields(langs["en"][1]), f"{key}/{lang}"
+
+def test_notifications_use_the_users_language(client, db):
+    zone, hu, hv = setup(db, client)
+    user = db.query(User).filter_by(email="u@test.com").one()
+    user.preferred_lang = "hi"
+    db.commit()
+    reserve(client, hu, zone, zone.slots[0], *window())
+    note = client.get("/api/notifications/", headers=hu).json()["items"][0]
+    assert note["title"] == "पार्किंग आरक्षित" and "S001" in note["message"]

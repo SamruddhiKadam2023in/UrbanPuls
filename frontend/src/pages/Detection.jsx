@@ -27,7 +27,7 @@ export default function Detection() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'image/jpeg': [], 'image/png': [], 'image/webp': [] }, maxFiles: 1, maxSize: 10 * 1024 * 1024 })
 
   const handleDetect = async () => {
-    if (!file) return toast.error('Upload an image first')
+    if (!file) return toast.error(t('detection.need_image', 'Upload an image first'))
     setLoading(true)
     try {
       const fd = new FormData(); fd.append('file', file)
@@ -35,8 +35,8 @@ export default function Detection() {
       setDetections(res.data.detections)
       // Same toast id as the live alert, so staff don't see it twice
       if (res.data.is_violation) toast.error(t('detection.found', '🚨 {{n}} violation(s) found', { n: res.data.violations.length }), { id: 'violation' })
-      else toast.success(`✅ ${res.data.count} objects detected. No violations.`)
-    } catch (e) { toast.error(errorMessage(e, 'Detection failed')) }
+      else toast.success(t('detection.clean', '✅ {{n}} objects detected. No violations.', { n: res.data.count }))
+    } catch (e) { toast.error(errorMessage(e, t('detection.failed', 'Detection failed'))) }
     finally { setLoading(false) }
   }
 
@@ -47,14 +47,14 @@ export default function Detection() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #f72585, #7209b7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', boxShadow: '0 8px 24px rgba(247,37,133,0.35)' }}>🔍</div>
             <div>
-              <h1 className="section-header" style={{ fontSize: '26px' }}>YOLO AI Detection</h1>
-              <p className="section-sub">Upload images for AI-powered parking violation detection</p>
+              <h1 className="section-header" style={{ fontSize: '26px' }}>{t('detection.title', 'Violation detection')}</h1>
+              <p className="section-sub">{t('detection.subtitle', 'Upload a camera image to check for illegal parking')}</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '20px', background: wsConnected ? 'rgba(6,214,160,0.1)' : 'rgba(100,116,139,0.1)', border: `1px solid ${wsConnected ? 'rgba(6,214,160,0.3)' : 'rgba(100,116,139,0.2)'}` }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: wsConnected ? '#06d6a0' : '#64748b', ...(wsConnected && { animation: 'pulse 1.5s infinite' }) }} />
             <span style={{ fontSize: '12px', color: wsConnected ? '#06d6a0' : 'var(--c-text3)', fontWeight: '500' }}>
-              {wsConnected ? 'Live alerts active' : 'Connecting...'}
+              {wsConnected ? t('detection.live_on', 'Live alerts active') : t('detection.connecting', 'Connecting...')}
             </span>
           </div>
         </div>
@@ -62,19 +62,19 @@ export default function Detection() {
 
       {status && !status.active && (
         <div style={{ background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.3)', borderRadius: '12px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: 'var(--c-text2)' }}>
-          🔒 Violation detection is not active yet. It will be switched on once a model trained on images from our parking sites is installed.
+          🔒 {t('detection.inactive', 'Violation detection is not active yet. It will be switched on once a model trained on images from our parking sites is installed.')}
         </div>
       )}
       {status?.mock_mode && (
         <div style={{ background: 'rgba(255,209,102,0.08)', border: '1px solid rgba(255,209,102,0.25)', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#ffd166' }}>
-          Demo mode: no trained model is installed, so results are fixed samples. This mode is off in production.
+          {t('detection.demo', 'Demo mode: no trained model is installed, so results are fixed samples. This mode is off in production.')}
         </div>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
         {/* Upload panel */}
         <div className="card" style={{ padding: '24px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Upload Image</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>{t('detection.upload_title', 'Upload image')}</h3>
           <div {...getRootProps()} style={{
             border: `2px dashed ${isDragActive ? 'var(--c-primary)' : preview ? 'var(--c-accent)' : 'var(--c-border)'}`,
             borderRadius: '14px', padding: '24px', textAlign: 'center', cursor: 'pointer',
@@ -88,9 +88,9 @@ export default function Detection() {
                 <div>
                   <div style={{ fontSize: '40px', marginBottom: '12px' }}>🖼️</div>
                   <p style={{ fontSize: '14px', color: 'var(--c-text2)', marginBottom: '4px' }}>
-                    {isDragActive ? 'Drop image here' : 'Drag & drop or click to upload'}
+                    {isDragActive ? t('detection.drop_here', 'Drop image here') : t('detection.drop', 'Drag & drop or click to upload')}
                   </p>
-                  <p style={{ fontSize: '12px', color: 'var(--c-text3)' }}>CCTV snapshots, parking lot images</p>
+                  <p style={{ fontSize: '12px', color: 'var(--c-text3)' }}>{t('detection.drop_hint', 'CCTV snapshots, parking lot images')}</p>
                 </div>
               )}
           </div>
@@ -107,12 +107,12 @@ export default function Detection() {
 
         {/* Results panel */}
         <div className="card" style={{ padding: '24px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>Detection Results</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: 'var(--c-text)' }}>{t('detection.result_title', 'Detection results')}</h3>
           {detections.length === 0
             ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--c-text3)' }}>
                 <div style={{ fontSize: '36px', marginBottom: '12px' }}>🎯</div>
-                <p style={{ fontSize: '13px' }}>Results will appear here after running detection</p>
+                <p style={{ fontSize: '13px' }}>{t('detection.result_empty', 'Results will appear here after running detection')}</p>
               </div>
             )
             : (
@@ -138,7 +138,7 @@ export default function Detection() {
                 })}
                 {detections.some(d => d.label === 'illegal_parking') && (
                   <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(239,35,60,0.1)', border: '1px solid rgba(239,35,60,0.25)', marginTop: '8px' }}>
-                    <p style={{ fontSize: '12px', color: '#f87171', fontWeight: '500' }}>🚨 Illegal parking detected. Live alert sent to staff.</p>
+                    <p style={{ fontSize: '12px', color: '#f87171', fontWeight: '500' }}>🚨 {t('detection.violation', 'Illegal parking detected. Live alert sent to staff.')}</p>
                   </div>
                 )}
               </div>

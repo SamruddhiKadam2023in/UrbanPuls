@@ -106,10 +106,9 @@ def create_reservation(request: Request, data: ReservationCreate, db: Session = 
     )
     db.add(booking)
     db.flush()
-    notify(db, user, "booking", "Parking reserved",
-           f"Slot {slot.slot_number} at {zone.name} from {fmt_local(start)}. Show code {booking.booking_code} at the gate "
-           f"and arrive within {settings.BOOKING_GRACE_MINUTES} minutes of the start time.",
-           link="/bookings", email=True)
+    notify(db, user, "booking", "booking_reserved", link="/bookings", email=True,
+           slot=slot.slot_number, zone=zone.name, start=fmt_local(start), code=booking.booking_code,
+           grace=settings.BOOKING_GRACE_MINUTES)
     zone_changed(db, zone.id)
     db.commit()
     db.refresh(booking)

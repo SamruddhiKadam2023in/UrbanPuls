@@ -27,7 +27,7 @@ export default function Home() {
     { to: '/detection',  emoji: '🔍', title: t('home.actions.yolo'),       desc: t('home.actions.yolo_desc'),     color: '#f72585', glow: 'rgba(247,37,133,0.2)', area: 'detection' },
     { to: '/emergency',  emoji: '🚨', title: t('home.actions.emergency'),  desc: t('home.actions.emergency_desc'),color: '#ef233c', glow: 'rgba(239,35,60,0.2)'   },
     { to: '/dashboard',  emoji: '📊', title: t('home.actions.analytics'), desc: t('home.actions.analytics_desc'),color: '#a78bfa', glow: 'rgba(167,139,250,0.2)', area: 'staff' },
-    { to: '/gate',       emoji: '🚧', title: 'Gate',                       desc: 'Check cars in and out',         color: '#06d6a0', glow: 'rgba(6,214,160,0.2)', area: 'gate' },
+    { to: '/gate',       emoji: '🚧', title: t('nav.gate', 'Gate'),          desc: t('gate.subtitle', 'Check cars in and out, and record payments'),         color: '#06d6a0', glow: 'rgba(6,214,160,0.2)', area: 'gate' },
   ].filter(a => !a.area || hasRole(user, a.area))
 
   const stats = [
@@ -44,7 +44,7 @@ export default function Home() {
           <span className="pulse-ring" /> {t('home.system_active')}
         </p>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '36px', fontWeight: '800', color: 'var(--c-text)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: '8px' }}>
-          {greeting},<br /><span className="gradient-text">{user?.name?.split(' ')[0] || 'User'}</span>
+          {greeting},<br /><span className="gradient-text">{user?.name?.split(' ')[0] || ''}</span>
         </h1>
         <p style={{ color: 'var(--c-text2)', fontSize: '15px' }}>{t('home.welcome')}</p>
       </div>
@@ -67,7 +67,7 @@ export default function Home() {
             <p style={{ fontSize: '14px', fontWeight: '600', color: '#a78bfa' }}>
               <strong>{user.points} {t('home.redeem_msg')}</strong>
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--c-text2)', marginTop: '2px' }}>Use them for a discount when you reserve parking</p>
+            <p style={{ fontSize: '12px', color: 'var(--c-text2)', marginTop: '2px' }}>{t('complaints.points_hint', 'Use them when you reserve parking')}</p>
           </div>
           <Link to="/map" className="btn btn-sm" style={{ marginLeft: 'auto', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', flexShrink: 0 }}>{t('home.redeem_btn')}</Link>
         </div>

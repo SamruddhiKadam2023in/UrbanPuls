@@ -8,6 +8,8 @@ import { differenceInSeconds } from 'date-fns'
 import { fetchMyBookings, cancelBooking, bookingUpdated } from '../store/slices/bookingsSlice'
 import api, { errorMessage } from '../utils/api'
 import { fmtDateTime, fmtTime, localInputToISO, rupees, STATUS, toLocalInput } from '../utils/format'
+import i18n from '../i18n'
+const t = (...a) => i18n.t(...a)
 
 function Countdown({ target, prefix, urgentBelow = 900 }) {
   const [secs, setSecs] = useState(() => differenceInSeconds(new Date(target), new Date()))
@@ -21,7 +23,7 @@ function Countdown({ target, prefix, urgentBelow = 900 }) {
   const urgent = secs < urgentBelow
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: '700', background: urgent ? 'rgba(239,35,60,0.1)' : 'rgba(6,214,160,0.1)', color: urgent ? '#f87171' : '#06d6a0', border: `1px solid ${urgent ? 'rgba(239,35,60,0.3)' : 'rgba(6,214,160,0.3)'}` }}>
-      {secs < 0 ? `${prefix} passed ${text} ago` : `${prefix} in ${text}`}
+      {secs < 0 ? t('bookings.passed_ago', '{{what}} passed {{time}} ago', { what: prefix, time: text }) : t('bookings.in_time', '{{what}} in {{time}}', { what: prefix, time: text })}
     </span>
   )
 }
@@ -34,7 +36,7 @@ function ExtendModal({ booking, onClose, onDone }) {
     setSaving(true)
     try {
       const res = await api.post(`/bookings/${booking.id}/extend`, { end_time: localInputToISO(end) })
-      toast.success('Booking extended')
+      toast.success(t('bookings.extended', 'Booking extended'))
       onDone(res.data)
     } catch (e) { toast.error(errorMessage(e)) }
     finally { setSaving(false) }
@@ -42,13 +44,13 @@ function ExtendModal({ booking, onClose, onDone }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '20px' }}>
       <div className="card-glow" style={{ width: '100%', maxWidth: '380px', padding: '24px' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--c-text)', marginBottom: '6px' }}>Extend booking</h3>
-        <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '16px' }}>Currently ends {fmtDateTime(booking.end_time)}</p>
-        <label className="label">New end time</label>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: '700', color: 'var(--c-text)', marginBottom: '6px' }}>{t('bookings.extend_title', 'Extend booking')}</h3>
+        <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '16px' }}>{t('bookings.currently_ends', 'Currently ends {{time}}', { time: fmtDateTime(booking.end_time) })}</p>
+        <label className="label">{t('bookings.new_end', 'New end time')}</label>
         <input className="input" type="datetime-local" value={end} min={toLocalInput(current)} onChange={e => setEnd(e.target.value)} />
         <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
-          <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving} style={{ flex: 2 }}>{saving ? 'Saving...' : 'Extend'}</button>
+          <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving} style={{ flex: 2 }}>{saving ? t('common.saving', 'Saving...') : t('bookings.extend_btn', 'Extend')}</button>
         </div>
       </div>
     </div>
@@ -61,7 +63,7 @@ function RatingModal({ booking, onClose, onSubmit }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '20px' }}>
       <div className="card-glow" style={{ width: '100%', maxWidth: '380px', padding: '28px' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--c-text)', marginBottom: '6px' }}>Rate your experience</h3>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--c-text)', marginBottom: '6px' }}>{t('bookings.rate_title', 'Rate your experience')}</h3>
         <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '20px' }}>{booking.zone_name}</p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
           {[1, 2, 3, 4, 5].map(star => (
@@ -69,10 +71,10 @@ function RatingModal({ booking, onClose, onSubmit }) {
               style={{ fontSize: '32px', background: 'none', border: 'none', cursor: 'pointer', filter: rating >= star ? 'none' : 'grayscale(1)' }}>⭐</button>
           ))}
         </div>
-        <textarea className="input" rows={3} placeholder="Share your experience (optional)" value={comment} onChange={e => setComment(e.target.value)} style={{ resize: 'none', marginBottom: '16px' }} />
+        <textarea className="input" rows={3} placeholder={t('bookings.rate_ph', 'Share your experience (optional)')} value={comment} onChange={e => setComment(e.target.value)} style={{ resize: 'none', marginBottom: '16px' }} />
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>Skip</button>
-          <button className="btn btn-primary" onClick={() => onSubmit(rating, comment)} disabled={!rating} style={{ flex: 2 }}>Submit</button>
+          <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>{t('bookings.skip', 'Skip')}</button>
+          <button className="btn btn-primary" onClick={() => onSubmit(rating, comment)} disabled={!rating} style={{ flex: 2 }}>{t('bookings.submit', 'Submit')}</button>
         </div>
       </div>
     </div>
@@ -87,15 +89,15 @@ function BookingCard({ b, children, extra }) {
         <div style={{ flex: 1, minWidth: '220px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: '600', fontSize: '15px', color: 'var(--c-text)' }}>{b.zone_name}</span>
-            <span className={`badge ${sc.badge}`}>{sc.label}</span>
+            <span className={`badge ${sc.badge}`}>{t(`status.${b.status}`, sc.label)}</span>
             {extra}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '4px' }}>
-            🅿 Slot {b.slot_number} · 🚘 <span style={{ fontFamily: 'var(--font-mono)' }}>{b.vehicle_number}</span>
+            🅿 {t('booking.slot', 'Slot')} {b.slot_number} · 🚘 <span style={{ fontFamily: 'var(--font-mono)' }}>{b.vehicle_number}</span>
           </div>
           <div style={{ fontSize: '12px', color: 'var(--c-text3)', fontFamily: 'var(--font-mono)' }}>
             {b.checked_in_at
-              ? <>In {fmtDateTime(b.checked_in_at)}{b.checked_out_at && <> → out {fmtTime(b.checked_out_at)}</>}</>
+              ? <>{t('bookings.in', 'In')} {fmtDateTime(b.checked_in_at)}{b.checked_out_at && <> → {t('bookings.out', 'out')} {fmtTime(b.checked_out_at)}</>}</>
               : <>{fmtDateTime(b.start_time)} → {fmtTime(b.end_time)}</>}
           </div>
         </div>
@@ -129,8 +131,8 @@ export default function Bookings() {
   const handleCancel = async (id) => {
     if (!confirm(t('bookings.cancel_confirm'))) return
     const res = await dispatch(cancelBooking(id))
-    if (res.meta.requestStatus === 'fulfilled') toast.success('Booking cancelled')
-    else toast.error('Could not cancel this booking')
+    if (res.meta.requestStatus === 'fulfilled') toast.success(t('bookings.cancelled', 'Booking cancelled'))
+    else toast.error(t('bookings.cancel_failed', 'Could not cancel this booking'))
   }
 
   const downloadReceipt = async (b) => {
@@ -139,7 +141,7 @@ export default function Bookings() {
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a'); a.href = url; a.download = `receipt_${b.booking_code}.pdf`; a.click()
       URL.revokeObjectURL(url)
-    } catch { toast.error('Receipt not available') }
+    } catch { toast.error(t('bookings.no_receipt', 'Receipt not available')) }
   }
 
   const exportCSV = () => {
@@ -184,13 +186,12 @@ export default function Bookings() {
             <p className="section-sub">{list.length} {t('bookings.total')}</p>
           </div>
         </div>
-        {list.length > 0 && <button onClick={exportCSV} className="btn btn-outline btn-sm">📥 Export CSV</button>}
+        {list.length > 0 && <button onClick={exportCSV} className="btn btn-outline btn-sm">📥 {t('bookings.export', 'Export CSV')}</button>}
       </div>
 
       {limits && limits.recent_no_shows > 0 && (
         <div style={{ background: 'rgba(255,209,102,0.08)', border: '1px solid rgba(255,209,102,0.25)', borderRadius: '12px', padding: '12px 16px', marginBottom: '20px', fontSize: '13px', color: 'var(--c-text2)' }}>
-          ⚠️ You missed {limits.recent_no_shows} of your last reservations. After {limits.no_show_limit} missed reservations in 30 days, online booking is paused.
-          Please cancel bookings you can't make.
+          ⚠️ {t('bookings.no_show_warning', "You missed {{missed}} of your recent reservations. After {{limit}} missed reservations in 30 days, online booking is paused. Please cancel bookings you can't make.", { missed: limits.recent_no_shows, limit: limits.no_show_limit })}
         </div>
       )}
 
@@ -200,21 +201,21 @@ export default function Bookings() {
         <div className="card" style={{ padding: '60px', textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🅿️</div>
           <p style={{ color: 'var(--c-text2)', fontSize: '15px', marginBottom: '12px' }}>{t('bookings.no_bookings')}</p>
-          <Link to="/map" className="btn btn-primary">Find parking →</Link>
+          <Link to="/map" className="btn btn-primary">{t('bookings.find_parking', 'Find parking →')}</Link>
         </div>
       )}
 
-      {section('🚗 Parked now', '#06d6a0', parked, b => (
-        <BookingCard key={b.id} b={b} extra={<Countdown target={b.end_time} prefix="Booked time ends" />}>
-          <button onClick={() => setExtending(b)} className="btn btn-ghost btn-sm">⏱ Extend</button>
+      {section(`🚗 ${t('bookings.parked_now', 'Parked now')}`, '#06d6a0', parked, b => (
+        <BookingCard key={b.id} b={b} extra={<Countdown target={b.end_time} prefix={t('bookings.booked_time_ends', 'Booked time ends')} />}>
+          <button onClick={() => setExtending(b)} className="btn btn-ghost btn-sm">⏱ {t('bookings.extend_btn', 'Extend')}</button>
         </BookingCard>
       ))}
 
-      {section('📅 Upcoming', '#60a5fa', upcoming, b => (
+      {section(`📅 ${t('bookings.upcoming', 'Upcoming')}`, '#60a5fa', upcoming, b => (
         <div key={b.id}>
-          <BookingCard b={b} extra={<Countdown target={b.start_time} prefix="Arrival" urgentBelow={600} />}>
-            <button onClick={() => setShowQr(showQr === b.id ? null : b.id)} className="btn btn-primary btn-sm">{showQr === b.id ? 'Hide code' : '▣ Show gate code'}</button>
-            <button onClick={() => setExtending(b)} className="btn btn-ghost btn-sm">⏱ Extend</button>
+          <BookingCard b={b} extra={<Countdown target={b.start_time} prefix={t('bookings.arrival', 'Arrival')} urgentBelow={600} />}>
+            <button onClick={() => setShowQr(showQr === b.id ? null : b.id)} className="btn btn-primary btn-sm">{showQr === b.id ? t('bookings.hide_code', 'Hide code') : `▣ ${t('bookings.show_code', 'Show gate code')}`}</button>
+            <button onClick={() => setExtending(b)} className="btn btn-ghost btn-sm">⏱ {t('bookings.extend_btn', 'Extend')}</button>
             <button onClick={() => handleCancel(b.id)} className="btn btn-danger btn-sm">{t('bookings.cancel')}</button>
           </BookingCard>
           {showQr === b.id && (
@@ -223,16 +224,16 @@ export default function Bookings() {
                 <QRCodeSVG value={b.booking_code} size={180} />
               </div>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: '20px', fontWeight: '700', letterSpacing: '0.15em', color: 'var(--c-text)', marginTop: '10px' }}>{b.booking_code}</p>
-              <p style={{ fontSize: '12px', color: 'var(--c-text3)', marginTop: '4px' }}>Show this at the gate. Pay there in cash or UPI.</p>
+              <p style={{ fontSize: '12px', color: 'var(--c-text3)', marginTop: '4px' }}>{t('bookings.code_hint', 'Show this at the gate. Pay there in cash or UPI.')}</p>
             </div>
           )}
         </div>
       ))}
 
-      {section('Past bookings', 'var(--c-text2)', past, b => (
+      {section(t('bookings.past', 'Past bookings'), 'var(--c-text2)', past, b => (
         <BookingCard key={b.id} b={b} extra={b.rating && <span style={{ fontSize: '12px', color: '#ffd166' }}>{'★'.repeat(b.rating)}</span>}>
           {b.status === 'completed' && !b.rating && (
-            <button onClick={() => setRating(b)} className="btn btn-sm" style={{ background: 'rgba(255,209,102,0.1)', color: '#ffd166', border: '1px solid rgba(255,209,102,0.3)' }}>⭐ Rate</button>
+            <button onClick={() => setRating(b)} className="btn btn-sm" style={{ background: 'rgba(255,209,102,0.1)', color: '#ffd166', border: '1px solid rgba(255,209,102,0.3)' }}>⭐ {t('bookings.rate', 'Rate')}</button>
           )}
           {b.has_receipt && <button onClick={() => downloadReceipt(b)} className="btn btn-ghost btn-sm">{t('bookings.receipt')}</button>}
         </BookingCard>

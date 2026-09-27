@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, Legend } from 'recharts'
 import api from '../utils/api'
 import RevenueReport from '../components/reports/RevenueReport'
+import { useTranslation } from 'react-i18next'
 
 const COLORS = ['#3b82f6', '#06d6a0', '#f72585', '#ffd166', '#a78bfa', '#fb923c']
 
@@ -19,6 +20,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Analytics() {
+  const { t } = useTranslation()
   const user = useSelector(s => s.auth.user)
   const [vendorStats,    setVendorStats]    = useState(null)
   const [trafficSummary, setTrafficSummary] = useState([])
@@ -57,8 +59,8 @@ export default function Analytics() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'linear-gradient(135deg, #a78bfa, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', boxShadow: '0 8px 24px rgba(167,139,250,0.35)' }}>📊</div>
           <div>
-            <h1 className="section-header" style={{ fontSize: '26px' }}>Analytics</h1>
-            <p className="section-sub">Real-time insights and performance metrics</p>
+            <h1 className="section-header" style={{ fontSize: '26px' }}>{t('nav.analytics', 'Analytics')}</h1>
+            <p className="section-sub">{t('analytics.subtitle', 'Bookings, revenue and traffic across your zones')}</p>
           </div>
         </div>
       </div>
@@ -66,10 +68,10 @@ export default function Analytics() {
       {/* KPI cards */}
       {vendorStats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          <StatCard label="Total Zones"    value={vendorStats.total_zones}                        color="#3b82f6" bg="rgba(59,130,246,0.08)"   border="rgba(59,130,246,0.2)" />
-          <StatCard label="Total Bookings" value={vendorStats.total_bookings}                     color="#06d6a0" bg="rgba(6,214,160,0.08)"    border="rgba(6,214,160,0.2)" />
-          <StatCard label="Total Revenue"  value={`₹${vendorStats.total_revenue?.toFixed(0)}`}   color="#ffd166" bg="rgba(255,209,102,0.08)"  border="rgba(255,209,102,0.2)" />
-          <StatCard label="No-shows"       value={vendorStats.no_shows}                           color="#f87171" bg="rgba(239,35,60,0.08)"    border="rgba(239,35,60,0.2)" />
+          <StatCard label={t('dashboard.zones', 'Zones')}    value={vendorStats.total_zones}                        color="#3b82f6" bg="rgba(59,130,246,0.08)"   border="rgba(59,130,246,0.2)" />
+          <StatCard label={t('dashboard.total_bookings', 'Total bookings')} value={vendorStats.total_bookings}                     color="#06d6a0" bg="rgba(6,214,160,0.08)"    border="rgba(6,214,160,0.2)" />
+          <StatCard label={t('dashboard.revenue', 'Revenue collected')}  value={`₹${vendorStats.total_revenue?.toFixed(0)}`}   color="#ffd166" bg="rgba(255,209,102,0.08)"  border="rgba(255,209,102,0.2)" />
+          <StatCard label={t('report.no_shows', 'No-shows')}       value={vendorStats.no_shows}                           color="#f87171" bg="rgba(239,35,60,0.08)"    border="rgba(239,35,60,0.2)" />
         </div>
       )}
 
@@ -78,7 +80,7 @@ export default function Analytics() {
 
         {/* Booking trend */}
         <div className="card" style={{ padding: '20px', gridColumn: '1 / -1' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>📈 Booking Trend (Last 7 Days)</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>📈 {t('analytics.trend', 'Bookings and revenue, last 7 days')}</h3>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={bookingTrend} margin={{ left: -20, right: 0 }}>
               <defs>
@@ -96,22 +98,22 @@ export default function Analytics() {
               <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11, fill: 'var(--c-text2)' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: '12px', color: 'var(--c-text2)' }} />
-              <Area yAxisId="b" type="monotone" dataKey="bookings" stroke="#3b82f6" fill="url(#blueGrad)"  strokeWidth={2} name="Bookings" />
-              <Area yAxisId="r" type="monotone" dataKey="revenue"  stroke="#06d6a0" fill="url(#greenGrad)" strokeWidth={2} name="Revenue (₹)" />
+              <Area yAxisId="b" type="monotone" dataKey="bookings" stroke="#3b82f6" fill="url(#blueGrad)"  strokeWidth={2} name={t('analytics.bookings', 'Bookings')} />
+              <Area yAxisId="r" type="monotone" dataKey="revenue"  stroke="#06d6a0" fill="url(#greenGrad)" strokeWidth={2} name={t('analytics.revenue', 'Revenue (₹)')} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* Traffic density */}
         <div className="card" style={{ padding: '20px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>🚦 Traffic Density by Zone</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>🚦 {t('dashboard.traffic_chart', 'Traffic density by zone')}</h3>
           {trafficSummary.length === 0
-            ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>No traffic data yet</div>
+            ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>{t('dashboard.no_traffic', 'No traffic data yet')}</div>
             : <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={trafficSummary} margin={{ left: -20 }}>
                   <XAxis dataKey="zone_name" tick={{ fontSize: 10, fill: 'var(--c-text2)' }} />
                   <YAxis domain={[0,1]} tick={{ fontSize: 10, fill: 'var(--c-text2)' }} />
-                  <Tooltip content={<CustomTooltip />} formatter={v => [`${(v*100).toFixed(0)}%`, 'Density']} />
+                  <Tooltip content={<CustomTooltip />} formatter={v => [`${(v*100).toFixed(0)}%`, t('dashboard.density', 'Density')]} />
                   <Bar dataKey="avg_density" radius={[6,6,0,0]}>
                     {trafficSummary.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>
@@ -122,9 +124,9 @@ export default function Analytics() {
 
         {/* Complaint types */}
         <div className="card" style={{ padding: '20px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>📋 Complaint Types</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>📋 {t('analytics.complaint_types', 'Complaint types')}</h3>
           {complaintPie.length === 0
-            ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>No complaint data</div>
+            ? <div style={{ textAlign: 'center', padding: '40px', color: 'var(--c-text3)', fontSize: '13px' }}>{t('analytics.no_complaints', 'No complaint data')}</div>
             : <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={complaintPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ percent }) => `${(percent*100).toFixed(0)}%`} labelLine={false}>
@@ -142,7 +144,7 @@ export default function Analytics() {
 
       {statusPie.length > 0 && (
         <div className="card" style={{ padding: '20px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>✅ Complaint Resolution Status</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: '600', color: 'var(--c-text)', marginBottom: '16px' }}>✅ {t('analytics.complaint_status', 'Complaint status')}</h3>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {statusPie.map((s, i) => {
               const colors = { pending: '#ffd166', verified: '#06d6a0', rejected: '#ef233c', resolved: '#3b82f6' }

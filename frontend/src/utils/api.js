@@ -1,4 +1,5 @@
 import axios from 'axios'
+import i18n from '../i18n'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -22,14 +23,14 @@ api.interceptors.response.use(
 )
 
 // Turns any API error (including FastAPI validation lists) into one readable sentence
-export function errorMessage(err, fallback = 'Something went wrong. Please try again.') {
+export function errorMessage(err, fallback = i18n.t('errors.generic', 'Something went wrong. Please try again.')) {
   const detail = err?.response?.data?.detail
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail) && detail.length) {
     return detail.map(d => (d.msg || '').replace(/^Value error, /, '')).filter(Boolean).join('. ') || fallback
   }
-  if (err?.response?.status === 429) return 'Too many attempts. Please wait a minute and try again.'
-  if (!err?.response) return 'Cannot reach the server. Check your connection.'
+  if (err?.response?.status === 429) return i18n.t('errors.rate_limited', 'Too many attempts. Please wait a minute and try again.')
+  if (!err?.response) return i18n.t('errors.offline', 'Cannot reach the server. Check your connection.')
   return fallback
 }
 

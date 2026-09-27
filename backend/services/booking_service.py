@@ -118,11 +118,10 @@ def expire_no_shows(db: Session) -> list[Booking]:
     expired = db.query(Booking).filter(Booking.status == BookingStatus.reserved, Booking.start_time < cutoff)         .with_for_update(skip_locked=True).all()
     for b in expired:
         b.status = BookingStatus.no_show
-        notify(db, b.user, "no_show", "Reservation released",
-               f"Your car didn't arrive at {b.zone.name} by {fmt_local(b.start_time + timedelta(minutes=settings.BOOKING_GRACE_MINUTES))}, "
-               f"so slot {b.slot.slot_number} was released. Please cancel bookings you can't make: "
-               f"after {settings.NO_SHOW_LIMIT} missed bookings in {settings.NO_SHOW_WINDOW_DAYS} days, online booking is paused.",
-               link="/bookings", email=True)
+        notify(db, b.user, "no_show", "no_show", link="/bookings", email=True,
+               zone=b.zone.name, slot=b.slot.slot_number,
+               deadline=fmt_local(b.start_time + timedelta(minutes=settings.BOOKING_GRACE_MINUTES)),
+               limit=settings.NO_SHOW_LIMIT, days=settings.NO_SHOW_WINDOW_DAYS)
         zone_changed(db, b.zone_id)
     db.commit()
     return expired
@@ -140,8 +139,7 @@ def send_reminders(db: Session) -> list[Booking]:
         b.reminder_sent = True
         # Reservations made at the last minute already got a confirmation; no need to remind
         if (b.start_time - b.created_at) > timedelta(minutes=REMINDER_MINUTES):
-            notify(db, b.user, "reminder", "Your parking starts soon",
-                   f"Slot {b.slot.slot_number} at {b.zone.name} is held for you from {fmt_local(b.start_time)}. "
-                   f"Show code {b.booking_code} at the gate.", link="/bookings")
+            notify(db, b.user, "reminder", "reminder", link="/bookings",
+                   slot=b.slot.slot_number, zone=b.zone.name, start=fmt_local(b.start_time), code=b.booking_code)
     db.commit()
     return due

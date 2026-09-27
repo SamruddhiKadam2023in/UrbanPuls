@@ -68,15 +68,12 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), a
         user.role = data.role
         if data.role == UserRole.vendor:
             user.vendor_requested = False
-            notify(db, user, "account", "Vendor account approved",
-                   "You can now add your parking zones and use the Gate screen.", link="/zones", email=True)
+            notify(db, user, "account", "vendor_approved", link="/zones", email=True)
     if data.is_active is not None:
         user.is_active = data.is_active
     if data.vendor_requested is False and was_requested and user.role != UserRole.vendor:
         user.vendor_requested = False
-        notify(db, user, "account", "Vendor request declined",
-               "Your request for a vendor account was not approved. Contact support if you think this is a mistake.",
-               email=True)
+        notify(db, user, "account", "vendor_declined", email=True)
     elif data.vendor_requested is not None:
         user.vendor_requested = data.vendor_requested
     db.commit()

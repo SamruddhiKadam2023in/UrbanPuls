@@ -111,7 +111,7 @@ export default function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
 
           {/* Dark/Light */}
-          <button onClick={toggleTheme} title={darkMode ? 'Light mode' : 'Dark mode'}
+          <button onClick={toggleTheme} title={darkMode ? t('nav.light_mode', 'Light mode') : t('nav.dark_mode', 'Dark mode')} aria-label={darkMode ? t('nav.light_mode', 'Light mode') : t('nav.dark_mode', 'Dark mode')}
             style={{ width: '34px', height: '34px', borderRadius: '9px', border: '1px solid var(--c-border)', background: 'var(--c-bg3)', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
             {darkMode ? '☀️' : '🌙'}
           </button>
@@ -150,7 +150,7 @@ export default function Navbar() {
           </Link>
 
           {/* Logout */}
-          <button onClick={handleLogout} title="Logout"
+          <button onClick={handleLogout} title={t('nav.logout', 'Logout')} aria-label={t('nav.logout', 'Logout')}
             style={{ width: '34px', height: '34px', borderRadius: '9px', background: 'rgba(239,35,60,0.1)', border: '1px solid rgba(239,35,60,0.2)', color: '#f87171', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             ↩
           </button>

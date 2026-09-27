@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:check": "node scripts/i18n-extract.mjs",
+    "i18n:sync": "node scripts/i18n-extract.mjs --write"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.3.0",

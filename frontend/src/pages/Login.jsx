@@ -40,7 +40,7 @@ export default function Login() {
   )
 
   return (
-    <AuthShell title={<span className="gradient-text">TPMS</span>} subtitle="Traffic & Parking Management System" footer={demo}>
+    <AuthShell title={<span className="gradient-text">TPMS</span>} subtitle={t('app.full_name', 'Traffic & Parking Management System')} footer={demo}>
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--c-text)' }}>{t('auth.login_title')}</h2>
         <p style={{ color: 'var(--c-text2)', fontSize: '13px', marginTop: '4px' }}>{t('auth.login_sub')}</p>
@@ -53,11 +53,11 @@ export default function Login() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <label className="label">{t('auth.password')}</label>
-            <Link to="/forgot-password" style={{ fontSize: '12px', color: 'var(--c-primary-light)', textDecoration: 'none' }}>Forgot password?</Link>
+            <Link to="/forgot-password" style={{ fontSize: '12px', color: 'var(--c-primary-light)', textDecoration: 'none' }}>{t('auth.forgot', 'Forgot password?')}</Link>
           </div>
           <div style={{ position: 'relative' }}>
             <input className="input" type={show ? 'text' : 'password'} required autoComplete="current-password" placeholder="••••••••" style={{ paddingRight: '44px' }} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
-            <button type="button" onClick={() => setShow(v => !v)} aria-label={show ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--c-text3)', cursor: 'pointer' }}>{show ? '🙈' : '👁'}</button>
+            <button type="button" onClick={() => setShow(v => !v)} aria-label={show ? t('auth.hide_password', 'Hide password') : t('auth.show_password', 'Show password')} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--c-text3)', cursor: 'pointer' }}>{show ? '🙈' : '👁'}</button>
           </div>
         </div>
         <button className="btn btn-primary btn-lg" type="submit" disabled={loading} style={{ width: '100%', marginTop: '4px' }}>

@@ -19,6 +19,7 @@ from routes.zones import get_owned_zone
 from schemas import BookingOut, booking_out
 from services import booking_service as bs
 from services.live import zone_changed
+from services.messages import render
 from services.notify import notify
 from services.pdf_service import generate_receipt
 
@@ -151,9 +152,8 @@ def check_in(data: CheckInRequest, db: Session = Depends(get_db), user: User = D
     booking.checked_in_at = now
     slot.is_occupied = True
     slot.vehicle_number = booking.vehicle_number
-    notify(db, booking.user, "checkin", "Checked in",
-           f"{booking.vehicle_number} is parked in slot {slot.slot_number} at {booking.zone.name}. "
-           f"You pay at the gate when you leave.", link="/bookings")
+    notify(db, booking.user, "checkin", "checked_in", link="/bookings",
+           vehicle=booking.vehicle_number, slot=slot.slot_number, zone=booking.zone.name)
     zone_changed(db, booking.zone_id)
     db.commit()
     db.refresh(booking)
@@ -237,11 +237,11 @@ def check_out(data: CheckOutRequest, db: Session = Depends(get_db), user: User =
                                                 customer.name if customer else "Walk-in customer")
     except Exception:
         log.exception("Receipt generation failed for booking %s", booking.id)
-    paid = f"Rs {booking.final_amount:.2f} paid" + (f" by {booking.payment_method.value.upper()}" if booking.payment_method else "")
-    points = f" {booking.points_redeemed} points used." if booking.points_redeemed else ""
-    notify(db, customer, "checkout", "Thanks for parking with us",
-           f"{booking.vehicle_number} left {booking.zone.name}. {paid}.{points} Your receipt is in My Bookings.",
-           link="/bookings", email=True)
+    method = booking.payment_method.value.upper() if booking.payment_method else None
+    notify(db, customer, "checkout", "checked_out", link="/bookings", email=True,
+           vehicle=booking.vehicle_number, zone=booking.zone.name, amount=f"{booking.final_amount:.2f}",
+           method=lambda lang: render("checked_out_method", lang, method=method)[1] if method else "",
+           points=lambda lang: render("checked_out_points", lang, n=booking.points_redeemed)[1] if booking.points_redeemed else "")
     zone_changed(db, booking.zone_id)
     db.commit()
     db.refresh(booking)

@@ -18,7 +18,7 @@ export default function Profile() {
     i18n.changeLanguage(code)
     localStorage.setItem('lang', code)
     try { await api.patch(`/auth/language?lang=${code}`) } catch {}
-    toast.success(`Language changed!`)
+    toast.success(t('profile.lang_changed', 'Language changed'))
   }
 
   if (!user) return null
