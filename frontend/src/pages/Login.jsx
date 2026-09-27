@@ -13,7 +13,7 @@ const SHOW_DEMO = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_LOGINS =
 const DEMO_ACCOUNTS = SHOW_DEMO ? [
   ['user',   '🚗', 'user@tpms.com',   'user123'],
   ['vendor', '🏢', 'vendor@tpms.com', 'vendor123'],
-  ['police', '🚓', 'police@tpms.com', 'police123'],
+  ['police', '🦺', 'police@tpms.com', 'police123'],
   ['admin',  '🛡', 'admin@tpms.com',  'admin123'],
 ] : []
 
@@ -34,7 +34,7 @@ export default function Login() {
   const WHO = [
     { icon: '🚗', title: t('who.user_title', 'Drivers'), text: t('who.user_text', 'Create a free account and start reserving parking.'), link: '/register', cta: t('who.user_cta', 'Sign up') },
     { icon: '🏢', title: t('who.vendor_title', 'Parking Partners'), text: t('who.vendor_text', 'Own or run a parking lot? Sign up and choose "Parking Partner". Once an administrator approves you, add your lots and start taking bookings.'), link: '/register', cta: t('who.vendor_cta', 'Become a partner') },
-    { icon: '🚓', title: t('who.police_title', 'Police'), text: t('who.police_text', 'Your account is created by the TPMS administrator. Sign in above with the email and password they gave you.') },
+    { icon: '🦺', title: t('who.police_title', 'Field Officers'), text: t('who.police_text', 'They act on verified complaints on the ground. Accounts are created by the TPMS administrator; sign in above with the email and password they gave you.') },
     { icon: '🛡', title: t('who.admin_title', 'Administrators'), text: t('who.admin_text', 'Accounts are set up by the operator of this service. Sign in above.') },
   ]
 
@@ -80,7 +80,7 @@ export default function Login() {
     <AuthShell title={<span className="gradient-text">TPMS</span>} subtitle={t('app.full_name', 'Traffic & Parking Management System')} footer={footer}>
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--c-text)' }}>{t('auth.login_title')}</h2>
-        <p style={{ color: 'var(--c-text2)', fontSize: '13px', marginTop: '4px' }}>{t('auth.login_sub_all', 'One sign-in for drivers, parking owners, police and administrators')}</p>
+        <p style={{ color: 'var(--c-text2)', fontSize: '13px', marginTop: '4px' }}>{t('auth.login_sub_all', 'One sign-in for drivers, Parking Partners, Field Officers and administrators')}</p>
       </div>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>

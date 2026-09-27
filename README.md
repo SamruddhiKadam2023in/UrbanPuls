@@ -15,14 +15,14 @@ Walk-in cars without a booking can be checked in straight from the Gate screen.
 
 ## Roles
 
-Parking lot owners and operators are called **Parking Partners** in the app. In the code and database the role is still named `vendor`.
+Parking lot owners and operators are called **Parking Partners** in the app, and the people who act on complaints are **Field Officers**. In the code and database these roles are still named `vendor` and `police`.
 
 
 | Role | Can do | Pages |
 |------|--------|-------|
 | User | Reserve, extend and cancel bookings; rate visits; report complaints; earn points | Map, Bookings, Complaints, Notifications |
 | Parking Partner | Owns or runs parking lots. Everything a user can, plus manage their own lots and slots, check cars in and out, record payments, see reports. Sign-ups need admin approval | + Gate, Zones, Analytics, Dashboard |
-| Police | Resolve verified complaints on a map, download fines, use violation detection | + Enforcement, Detection |
+| Field Officer | Staff who act on verified complaints on the ground (your team, lot security, or traffic police if you partner with them). Resolve complaints on a map, download fines, use violation detection | + Enforcement, Detection |
 | Admin | Everything: manage users and roles, approve Parking Partners, create staff accounts, verify complaints | + Admin |
 
 ## Live updates and notifications
@@ -30,7 +30,7 @@ Parking lot owners and operators are called **Parking Partners** in the app. In 
 The browser keeps one WebSocket open (`/api/live/ws`). Through it:
 - users get notifications (booking confirmed, checked in, receipt, reminder 30 minutes before start, no-show, complaint updates)
 - maps, the Gate screen and the Zones page refresh when availability changes
-- Parking Partners, police and admins get violation alerts
+- Parking Partners, Field Officers and admins get violation alerts
 
 Notifications are also stored (bell icon) and the important ones are emailed. They are written in each user's chosen language.
 
@@ -88,7 +88,7 @@ Development uses SQLite by default. Emails (verification and password reset link
 | Admin | admin@tpms.com | admin123 |
 | Parking Partner | vendor@tpms.com | vendor123 |
 | User | user@tpms.com | user123 |
-| Police | police@tpms.com | police123 |
+| Field Officer | police@tpms.com | police123 |
 
 ## Languages
 

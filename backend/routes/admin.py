@@ -45,7 +45,7 @@ def list_users(role: Optional[UserRole] = None, vendor_requested: Optional[bool]
 
 @router.post("/users", status_code=201, response_model=UserOut)
 def create_user(data: UserCreate, db: Session = Depends(get_db), _: User = Depends(get_admin_user)):
-    """Staff accounts (police, vendors, other admins) are created here rather than through sign-up."""
+    """Staff accounts (Field Officers, Parking Partners, other admins) are created here rather than through sign-up."""
     email = data.email.lower()
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=400, detail="Email already registered")

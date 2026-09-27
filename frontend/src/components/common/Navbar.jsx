@@ -15,7 +15,7 @@ const NAV = [
   { to: '/gate',       icon: '🚧', key: 'nav.gate',       label: 'Gate',       area: 'gate' },
   { to: '/zones',      icon: '🅿', key: 'nav.zones',      label: 'Zones',      area: 'zones' },
   { to: '/complaints', icon: '⚠️', key: 'nav.complaints', label: 'Complaints' },
-  { to: '/police',     icon: '🚓', key: 'nav.police',     label: 'Enforcement', area: 'police' },
+  { to: '/police',     icon: '🦺', key: 'nav.police',     label: 'Enforcement', area: 'police' },
   { to: '/detection',  icon: '🔍', key: 'nav.yolo',       label: 'YOLO AI',    area: 'detection' },
   { to: '/analytics',  icon: '📊', key: 'nav.analytics',  label: 'Analytics',  area: 'staff' },
   { to: '/dashboard',  icon: '⚙️', key: 'nav.dashboard',  label: 'Dashboard',  area: 'staff' },

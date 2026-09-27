@@ -60,7 +60,7 @@
     "hide_password": "Hide password",
     "link_incomplete": "This link is incomplete.",
     "link_invalid": "This link is invalid or has expired.",
-    "login_sub_all": "One sign-in for drivers, parking owners, police and administrators",
+    "login_sub_all": "One sign-in for drivers, Parking Partners, Field Officers and administrators",
     "login_title": "Welcome back",
     "mismatch": "The two passwords do not match",
     "name": "Full name",
@@ -473,7 +473,7 @@
   },
   "roles": {
     "admin": "Admin",
-    "police": "Police",
+    "police": "Field Officer",
     "user": "User",
     "vendor": "Parking Partner"
   },
@@ -492,8 +492,8 @@
   "who": {
     "admin_text": "Accounts are set up by the operator of this service. Sign in above.",
     "admin_title": "Administrators",
-    "police_text": "Your account is created by the TPMS administrator. Sign in above with the email and password they gave you.",
-    "police_title": "Police",
+    "police_text": "They act on verified complaints on the ground. Accounts are created by the TPMS administrator; sign in above with the email and password they gave you.",
+    "police_title": "Field Officers",
     "title": "Who is TPMS for?",
     "user_cta": "Sign up",
     "user_text": "Create a free account and start reserving parking.",

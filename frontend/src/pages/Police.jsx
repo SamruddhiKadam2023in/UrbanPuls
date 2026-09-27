@@ -72,7 +72,7 @@ export default function Police() {
     <div className="page-wrap fade-in" style={{ maxWidth: '1300px' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h1 className="section-header" style={{ fontSize: '26px' }}>🚓 {t('police.title', 'Enforcement')}</h1>
+          <h1 className="section-header" style={{ fontSize: '26px' }}>🦺 {t('police.title', 'Enforcement')}</h1>
           <p className="section-sub">{t('police.subtitle', 'Verified complaints that need action on the ground')}</p>
         </div>
         <div style={{ display: 'flex', gap: '4px', background: 'var(--c-bg2)', padding: '4px', borderRadius: '12px' }}>
