@@ -28,8 +28,7 @@ services:
     build:
       context: ./backend
     container_name: tpms_backend
-    ports:
-      - "8000:8000"
+    # No published port: nginx (frontend) forwards /api to it, and 8000 may be used by other projects
     env_file:
       - ./backend/.env
     environment:
