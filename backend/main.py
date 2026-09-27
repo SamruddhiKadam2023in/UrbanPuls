@@ -1,39 +1,93 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
-from core.database import engine, Base
-from routes import auth, zones, bookings, detection, complaints, traffic, alerts, vendors
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
+
+from core.config import settings
+from core.database import SessionLocal
+from core.ratelimit import limiter
+from routes import admin, alerts, auth, bookings, complaints, detection, gate, traffic, vendors, zones
+from services.booking_service import expire_no_shows
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("tpms")
+
+async def no_show_loop():
+    """Frees reservations whose car never arrived. Runs in every worker; the update is idempotent."""
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                expired = await asyncio.to_thread(expire_no_shows, db)
+                if expired:
+                    log.info("Marked %d reservation(s) as no-show", len(expired))
+            finally:
+                db.close()
+        except Exception:
+            log.exception("No-show job failed")
+        await asyncio.sleep(settings.SCHEDULER_INTERVAL_SECONDS)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    # The schema is managed by Alembic: run `alembic upgrade head` before starting the app
+    for d in (settings.receipts_dir, settings.fines_dir, settings.uploads_dir):
+        d.mkdir(parents=True, exist_ok=True)
+    task = asyncio.create_task(no_show_loop()) if settings.SCHEDULER_ENABLED else None
     yield
+    if task:
+        task.cancel()
 
 app = FastAPI(
     title="Traffic & Parking Management System",
-    description="API for TPMS with YOLO-based illegal parking detection",
-    version="1.0.0",
-    lifespan=lifespan
+    description="API for TPMS: parking reservations with pay-at-the-gate, complaints and traffic insights",
+    version="2.0.0",
+    lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(auth.router,       prefix="/api/auth",       tags=["Auth"])
+app.include_router(admin.router,      prefix="/api/admin",      tags=["Admin"])
 app.include_router(zones.router,      prefix="/api/zones",      tags=["Zones"])
 app.include_router(bookings.router,   prefix="/api/bookings",   tags=["Bookings"])
+app.include_router(gate.router,       prefix="/api/gate",       tags=["Gate"])
 app.include_router(detection.router,  prefix="/api/detect",     tags=["YOLO Detection"])
 app.include_router(complaints.router, prefix="/api/complaints", tags=["Complaints"])
 app.include_router(traffic.router,    prefix="/api/traffic",    tags=["Traffic"])
 app.include_router(alerts.router,     prefix="/api/alerts",     tags=["Alerts"])
 app.include_router(vendors.router,    prefix="/api/vendors",    tags=["Vendors"])
 
+settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
+
+@app.get("/api/health", tags=["Health"])
+def health():
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "database unavailable"})
+
 @app.get("/")
 def root():
-    return {"message": "TPMS API is running ✅"}
+    return {"message": "TPMS API is running"}

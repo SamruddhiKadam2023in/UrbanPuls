@@ -1,91 +1,187 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import AwareDatetime, BaseModel, Field
+from sqlalchemy.orm import Session, selectinload
+
 from core.database import get_db
-from core.security import get_current_user, get_admin_user
+from core.security import require_roles, get_current_user
+from core.timeutil import to_utc
 from models.parking import ParkingZone, ParkingSlot
-from models.user import User
+from models.user import User, UserRole
+from schemas import ZoneOut, SlotOut
+from services import booking_service as bs
 
 router = APIRouter()
+vendor_or_admin = require_roles(UserRole.vendor, UserRole.admin)
+
+UPI_ID_PATTERN = r"^[A-Za-z0-9.\-_]{2,256}@[A-Za-z]{2,64}$"
 
 class ZoneCreate(BaseModel):
-    name: str
-    address: str
-    latitude: float
-    longitude: float
-    total_slots: int
-    price_per_hour: float = 20.0
-    vendor_id: Optional[int] = None
+    name: str = Field(min_length=1, max_length=100)
+    address: str = Field(min_length=1, max_length=200)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    total_slots: int = Field(ge=1, le=2000)
+    price_per_hour: float = Field(default=20.0, gt=0, le=10000)
+    upi_id: Optional[str] = Field(default=None, pattern=UPI_ID_PATTERN)
+    upi_name: Optional[str] = Field(default=None, max_length=100)
+    vendor_id: Optional[int] = None   # admins only; vendors always own the zones they create
 
-class SlotResponse(BaseModel):
-    id: int
-    slot_number: str
-    is_occupied: bool
-    vehicle_number: Optional[str]
-    class Config:
-        from_attributes = True
+class ZoneUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    address: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
+    price_per_hour: Optional[float] = Field(default=None, gt=0, le=10000)
+    upi_id: Optional[str] = Field(default=None, pattern=UPI_ID_PATTERN)
+    upi_name: Optional[str] = Field(default=None, max_length=100)
+    is_active: Optional[bool] = None
 
-class ZoneResponse(BaseModel):
-    id: int
-    name: str
-    address: str
-    latitude: float
-    longitude: float
-    total_slots: int
-    price_per_hour: float
-    available_slots: int
-    slots: List[SlotResponse] = []
-    class Config:
-        from_attributes = True
+class SlotsAdd(BaseModel):
+    count: int = Field(ge=1, le=500)
 
-@router.get("/", response_model=List[ZoneResponse])
-def get_all_zones(db: Session = Depends(get_db)):
-    zones = db.query(ParkingZone).filter(ParkingZone.is_active == True).all()
-    result = []
-    for z in zones:
-        available = sum(1 for s in z.slots if not s.is_occupied)
-        result.append({
-            "id": z.id, "name": z.name, "address": z.address,
-            "latitude": z.latitude, "longitude": z.longitude,
-            "total_slots": z.total_slots, "price_per_hour": z.price_per_hour,
-            "available_slots": available, "slots": z.slots
-        })
-    return result
+class SlotUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    is_occupied: Optional[bool] = None   # manual override, e.g. a car parked without using the gate
 
-@router.get("/{zone_id}", response_model=ZoneResponse)
-def get_zone(zone_id: int, db: Session = Depends(get_db)):
-    zone = db.query(ParkingZone).filter(ParkingZone.id == zone_id).first()
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def zone_out(zone: ParkingZone, available: int, held: set[int], with_slots: bool) -> ZoneOut:
+    slots = []
+    if with_slots:
+        slots = [SlotOut(id=s.id, slot_number=s.slot_number, is_occupied=s.is_occupied, is_active=s.is_active,
+                         is_available_now=s.is_active and not s.is_occupied and s.id not in held)
+                 for s in zone.slots]
+    return ZoneOut(id=zone.id, name=zone.name, address=zone.address, latitude=zone.latitude,
+                   longitude=zone.longitude, total_slots=sum(1 for s in zone.slots if s.is_active),
+                   price_per_hour=zone.price_per_hour, available_slots=available,
+                   is_active=zone.is_active, vendor_id=zone.vendor_id, slots=slots)
+
+def get_owned_zone(db: Session, zone_id: int, user: User) -> ParkingZone:
+    zone = db.get(ParkingZone, zone_id)
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
-    available = sum(1 for s in zone.slots if not s.is_occupied)
-    return {**zone.__dict__, "available_slots": available, "slots": zone.slots}
+    if user.role != UserRole.admin and zone.vendor_id != user.id:
+        raise HTTPException(status_code=403, detail="This zone belongs to another vendor")
+    return zone
 
-@router.post("/", status_code=201)
-def create_zone(data: ZoneCreate, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
-    zone = ParkingZone(**data.dict())
-    db.add(zone)
-    db.commit()
+def _add_slots(db: Session, zone: ParkingZone, count: int) -> None:
+    existing = {s.slot_number for s in zone.slots}
+    n = 1
+    added = 0
+    while added < count:
+        number = f"S{n:03d}"
+        if number not in existing:
+            db.add(ParkingSlot(zone_id=zone.id, slot_number=number))
+            added += 1
+        n += 1
+
+def _sync_total(db: Session, zone: ParkingZone) -> None:
+    db.flush()
     db.refresh(zone)
-    # Auto-create slots
-    for i in range(1, data.total_slots + 1):
-        slot = ParkingSlot(zone_id=zone.id, slot_number=f"S{i:03d}")
-        db.add(slot)
+    zone.total_slots = sum(1 for s in zone.slots if s.is_active)
+
+# ── Public ────────────────────────────────────────────────────────────────────
+@router.get("/", response_model=list[ZoneOut])
+def get_all_zones(db: Session = Depends(get_db)):
+    zones = db.query(ParkingZone).options(selectinload(ParkingZone.slots)) \
+        .filter(ParkingZone.is_active.is_(True)).order_by(ParkingZone.id).all()
+    ids = [z.id for z in zones]
+    counts = bs.available_now_counts(db, ids) if ids else {}
+    held = bs.held_slot_ids_now(db, ids) if ids else set()
+    return [zone_out(z, counts.get(z.id, 0), held, with_slots=True) for z in zones]
+
+@router.get("/{zone_id}", response_model=ZoneOut)
+def get_zone(zone_id: int, db: Session = Depends(get_db)):
+    zone = db.get(ParkingZone, zone_id)
+    if not zone or not zone.is_active:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    counts = bs.available_now_counts(db, [zone.id])
+    return zone_out(zone, counts.get(zone.id, 0), bs.held_slot_ids_now(db, [zone.id]), with_slots=True)
+
+@router.get("/{zone_id}/availability")
+def get_availability(zone_id: int, start: AwareDatetime, end: AwareDatetime, db: Session = Depends(get_db)):
+    """Slots that are free for the whole of [start, end), plus the estimated fare."""
+    zone = db.get(ParkingZone, zone_id)
+    if not zone or not zone.is_active:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    start, end = to_utc(start), to_utc(end)
+    if end <= start:
+        raise HTTPException(status_code=400, detail="End time must be after start time")
+    free = bs.free_slots(db, zone_id, start, end)
+    billed, fare = bs.fare_for(start, end, zone.price_per_hour)
+    return {
+        "zone_id": zone_id,
+        "slots": [{"id": s.id, "slot_number": s.slot_number} for s in free],
+        "billed_minutes": billed,
+        "estimated_amount": fare,
+        "price_per_hour": zone.price_per_hour,
+    }
+
+@router.get("/{zone_id}/slots", response_model=list[SlotOut])
+def get_slots(zone_id: int, db: Session = Depends(get_db)):
+    held = bs.held_slot_ids_now(db, [zone_id])
+    slots = db.query(ParkingSlot).filter(ParkingSlot.zone_id == zone_id).order_by(ParkingSlot.id).all()
+    return [SlotOut(id=s.id, slot_number=s.slot_number, is_occupied=s.is_occupied, is_active=s.is_active,
+                    is_available_now=s.is_active and not s.is_occupied and s.id not in held) for s in slots]
+
+# ── Vendor / admin management ─────────────────────────────────────────────────
+@router.post("/", status_code=201)
+def create_zone(data: ZoneCreate, db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    vendor_id = user.id
+    if user.role == UserRole.admin and data.vendor_id is not None:
+        vendor = db.get(User, data.vendor_id)
+        if not vendor or vendor.role != UserRole.vendor:
+            raise HTTPException(status_code=400, detail="vendor_id must belong to a vendor account")
+        vendor_id = vendor.id
+    zone = ParkingZone(**data.model_dump(exclude={"vendor_id", "total_slots"}), vendor_id=vendor_id, total_slots=0)
+    db.add(zone)
+    db.flush()
+    _add_slots(db, zone, data.total_slots)
+    _sync_total(db, zone)
     db.commit()
     return {"message": "Zone created", "zone_id": zone.id}
 
+@router.patch("/{zone_id}")
+def update_zone(zone_id: int, data: ZoneUpdate, db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    zone = get_owned_zone(db, zone_id, user)
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(zone, field, value)
+    db.commit()
+    return {"message": "Zone updated"}
+
+@router.post("/{zone_id}/slots", status_code=201)
+def add_slots(zone_id: int, data: SlotsAdd, db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    zone = get_owned_zone(db, zone_id, user)
+    _add_slots(db, zone, data.count)
+    _sync_total(db, zone)
+    db.commit()
+    return {"message": f"{data.count} slot(s) added", "total_slots": zone.total_slots}
+
 @router.patch("/{zone_id}/slots/{slot_id}")
-def update_slot(zone_id: int, slot_id: int, is_occupied: bool,
-                vehicle_number: Optional[str] = None,
-                db: Session = Depends(get_db)):
-    slot = db.query(ParkingSlot).filter(ParkingSlot.id == slot_id, ParkingSlot.zone_id == zone_id).first()
+def update_slot(zone_id: int, slot_id: int, data: SlotUpdate,
+                db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    zone = get_owned_zone(db, zone_id, user)
+    slot = db.query(ParkingSlot).filter(ParkingSlot.id == slot_id, ParkingSlot.zone_id == zone.id).first()
     if not slot:
         raise HTTPException(status_code=404, detail="Slot not found")
-    slot.is_occupied = is_occupied
-    slot.vehicle_number = vehicle_number
+    if data.is_active is not None:
+        slot.is_active = data.is_active
+    if data.is_occupied is not None:
+        slot.is_occupied = data.is_occupied
+        if not data.is_occupied:
+            slot.vehicle_number = None
+    _sync_total(db, zone)
     db.commit()
     return {"message": "Slot updated"}
 
-@router.get("/{zone_id}/slots", response_model=List[SlotResponse])
-def get_slots(zone_id: int, db: Session = Depends(get_db)):
-    return db.query(ParkingSlot).filter(ParkingSlot.zone_id == zone_id).all()
+@router.get("/manage/mine", response_model=list[ZoneOut])
+def my_zones(db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    """Zones the caller manages, including inactive ones (admins see all)."""
+    q = db.query(ParkingZone).options(selectinload(ParkingZone.slots))
+    if user.role != UserRole.admin:
+        q = q.filter(ParkingZone.vendor_id == user.id)
+    zones = q.order_by(ParkingZone.id).all()
+    ids = [z.id for z in zones]
+    counts = bs.available_now_counts(db, ids) if ids else {}
+    held = bs.held_slot_ids_now(db, ids) if ids else set()
+    return [zone_out(z, counts.get(z.id, 0), held, with_slots=True) for z in zones]

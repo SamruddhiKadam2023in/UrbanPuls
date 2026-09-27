@@ -1,132 +1,173 @@
-from fastapi import APIRouter, Depends, HTTPException
+import re
+from datetime import timedelta
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
+from pydantic import AwareDatetime, BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List
-import razorpay, hmac, hashlib, json, os
 
-from core.database import get_db
-from core.security import get_current_user
 from core.config import settings
-from models.parking import ParkingSlot, ParkingZone
+from core.database import get_db
+from core.ratelimit import limiter
+from core.security import get_current_user, require_verified
+from core.timeutil import to_utc, utcnow
 from models.booking import Booking, BookingStatus
-from models.user import User
-from services.pdf_service import generate_receipt
+from models.parking import ParkingSlot, ParkingZone
+from models.user import User, UserRole
+from schemas import BookingOut, booking_out
+from services import booking_service as bs
 
 router = APIRouter()
 
-class BookingCreate(BaseModel):
-    slot_id: int
+VEHICLE_RE = re.compile(r"^[A-Z0-9]{4,12}$")
+
+def normalize_vehicle(v: str) -> str:
+    v = re.sub(r"[\s\-]", "", v).upper()
+    if not VEHICLE_RE.match(v):
+        raise ValueError("Enter a valid vehicle number, e.g. MH01AB1234")
+    return v
+
+class ReservationCreate(BaseModel):
     zone_id: int
-    start_time: datetime
-    end_time: datetime
-    vehicle_number: Optional[str] = None
+    slot_id: int
+    start_time: AwareDatetime
+    end_time: AwareDatetime
+    vehicle_number: str
+    points_to_redeem: int = Field(default=0, ge=0)
 
-class PaymentVerify(BaseModel):
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
-    booking_id: int
+    @field_validator("vehicle_number")
+    @classmethod
+    def _vehicle(cls, v: str) -> str:
+        return normalize_vehicle(v)
 
-@router.post("/create-order")
-def create_order(data: BookingCreate, db: Session = Depends(get_db),
-                 current_user: User = Depends(get_current_user)):
-    slot = db.query(ParkingSlot).filter(ParkingSlot.id == data.slot_id).first()
-    if not slot or slot.is_occupied:
-        raise HTTPException(status_code=400, detail="Slot not available")
-    zone = db.query(ParkingZone).filter(ParkingZone.id == data.zone_id).first()
-    if not zone:
+class ExtendRequest(BaseModel):
+    end_time: AwareDatetime
+
+def validate_window(start, end) -> None:
+    now = utcnow()
+    if end <= start:
+        raise HTTPException(status_code=400, detail="End time must be after start time")
+    if start < now - timedelta(minutes=5):
+        raise HTTPException(status_code=400, detail="Start time is in the past")
+    if start > now + timedelta(days=settings.MAX_ADVANCE_DAYS):
+        raise HTTPException(status_code=400, detail=f"Bookings can be made at most {settings.MAX_ADVANCE_DAYS} days ahead")
+    if end - start > timedelta(hours=settings.MAX_BOOKING_HOURS):
+        raise HTTPException(status_code=400, detail=f"A booking can be at most {settings.MAX_BOOKING_HOURS} hours long")
+
+def _get_own_booking(db: Session, booking_id: int, user: User) -> Booking:
+    booking = db.query(Booking).filter(Booking.id == booking_id, Booking.user_id == user.id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return booking
+
+@router.post("/", status_code=201, response_model=BookingOut)
+@limiter.limit("10/minute")
+def create_reservation(request: Request, data: ReservationCreate, db: Session = Depends(get_db),
+                       user: User = Depends(require_verified)):
+    start, end = to_utc(data.start_time), to_utc(data.end_time)
+    validate_window(start, end)
+
+    if bs.recent_no_show_count(db, user.id) >= settings.NO_SHOW_LIMIT:
+        raise HTTPException(status_code=403, detail=(
+            f"Booking is paused because of {settings.NO_SHOW_LIMIT} missed reservations in the last "
+            f"{settings.NO_SHOW_WINDOW_DAYS} days. You can still park as a walk-in at the gate."))
+    if bs.active_booking_count(db, user.id) >= settings.MAX_ACTIVE_RESERVATIONS:
+        raise HTTPException(status_code=400, detail=f"You can hold at most {settings.MAX_ACTIVE_RESERVATIONS} active bookings")
+    if data.points_to_redeem > user.points:
+        raise HTTPException(status_code=400, detail="You do not have that many points")
+
+    zone = db.get(ParkingZone, data.zone_id)
+    if not zone or not zone.is_active:
         raise HTTPException(status_code=404, detail="Zone not found")
 
-    hours = (data.end_time - data.start_time).seconds / 3600
-    amount = round(hours * zone.price_per_hour, 2)
+    # Lock the slot row so two people cannot reserve it at the same moment (PostgreSQL row lock)
+    slot = db.query(ParkingSlot).filter(ParkingSlot.id == data.slot_id, ParkingSlot.zone_id == zone.id) \
+        .with_for_update().first()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Slot not found in this zone")
+    if not bs.slot_is_free(db, slot, start, end):
+        raise HTTPException(status_code=409, detail="This slot is already taken for part of that time. Please pick another slot.")
 
-    # Create Razorpay order (use placeholder if keys not set)
-    try:
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        order = client.order.create({
-            "amount": int(amount * 100),  # paise
-            "currency": "INR",
-            "receipt": f"booking_{current_user.id}_{datetime.utcnow().timestamp()}"
-        })
-        razorpay_order_id = order["id"]
-    except Exception:
-        razorpay_order_id = f"PLACEHOLDER_{int(datetime.utcnow().timestamp())}"
-
+    _, estimate = bs.fare_for(start, end, zone.price_per_hour)
     booking = Booking(
-        user_id=current_user.id,
-        slot_id=data.slot_id,
-        zone_id=data.zone_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
-        total_amount=amount,
+        booking_code=bs.new_booking_code(db),
+        user_id=user.id, slot_id=slot.id, zone_id=zone.id,
         vehicle_number=data.vehicle_number,
-        razorpay_order_id=razorpay_order_id
+        start_time=start, end_time=end,
+        price_per_hour=zone.price_per_hour, estimated_amount=estimate,
+        points_to_redeem=data.points_to_redeem,
+        status=BookingStatus.reserved,
     )
     db.add(booking)
     db.commit()
     db.refresh(booking)
+    return booking_out(booking)
 
+@router.get("/my", response_model=list[BookingOut])
+def my_bookings(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    bookings = db.query(Booking).filter(Booking.user_id == user.id).order_by(Booking.created_at.desc()).all()
+    return [booking_out(b) for b in bookings]
+
+@router.get("/limits")
+def my_limits(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return {
-        "booking_id": booking.id,
-        "razorpay_order_id": razorpay_order_id,
-        "amount": amount,
-        "currency": "INR",
-        "key": settings.RAZORPAY_KEY_ID
+        "active_bookings": bs.active_booking_count(db, user.id),
+        "max_active_bookings": settings.MAX_ACTIVE_RESERVATIONS,
+        "recent_no_shows": bs.recent_no_show_count(db, user.id),
+        "no_show_limit": settings.NO_SHOW_LIMIT,
+        "grace_minutes": settings.BOOKING_GRACE_MINUTES,
+        "point_value": settings.POINT_VALUE_RUPEES,
+        "points": user.points,
     }
 
-@router.post("/verify-payment")
-def verify_payment(data: PaymentVerify, db: Session = Depends(get_db),
-                   current_user: User = Depends(get_current_user)):
-    # Verify signature
-    generated = hmac.new(
-        settings.RAZORPAY_KEY_SECRET.encode(),
-        f"{data.razorpay_order_id}|{data.razorpay_payment_id}".encode(),
-        hashlib.sha256
-    ).hexdigest()
-
-    booking = db.query(Booking).filter(Booking.id == data.booking_id).first()
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    if generated == data.razorpay_signature or "PLACEHOLDER" in str(data.razorpay_order_id):
-        booking.payment_id = data.razorpay_payment_id
-        booking.status = BookingStatus.active
-        slot = db.query(ParkingSlot).filter(ParkingSlot.id == booking.slot_id).first()
-        if slot:
-            slot.is_occupied = True
-            slot.vehicle_number = booking.vehicle_number
-        receipt_path = generate_receipt(booking, current_user)
-        booking.receipt_url = receipt_path
-        db.commit()
-        return {"message": "Payment verified", "booking_id": booking.id, "receipt": receipt_path}
-    else:
-        raise HTTPException(status_code=400, detail="Payment verification failed")
-
-@router.get("/my")
-def my_bookings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    bookings = db.query(Booking).filter(Booking.user_id == current_user.id).order_by(Booking.created_at.desc()).all()
-    return bookings
+@router.get("/{booking_id}", response_model=BookingOut)
+def get_booking(booking_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return booking_out(_get_own_booking(db, booking_id, user))
 
 @router.delete("/{booking_id}")
-def cancel_booking(booking_id: int, db: Session = Depends(get_db),
-                   current_user: User = Depends(get_current_user)):
-    booking = db.query(Booking).filter(Booking.id == booking_id, Booking.user_id == current_user.id).first()
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+def cancel_booking(booking_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    booking = _get_own_booking(db, booking_id, user)
+    if booking.status != BookingStatus.reserved:
+        raise HTTPException(status_code=400, detail="Only reservations that have not started parking can be cancelled")
     booking.status = BookingStatus.cancelled
-    slot = db.query(ParkingSlot).filter(ParkingSlot.id == booking.slot_id).first()
-    if slot:
-        slot.is_occupied = False
-        slot.vehicle_number = None
     db.commit()
     return {"message": "Booking cancelled"}
 
-@router.get("/receipt/{booking_id}")
-def download_receipt(booking_id: int, db: Session = Depends(get_db),
-                     current_user: User = Depends(get_current_user)):
-    booking = db.query(Booking).filter(Booking.id == booking_id, Booking.user_id == current_user.id).first()
-    if not booking or not booking.receipt_url:
-        raise HTTPException(status_code=404, detail="Receipt not found")
-    return FileResponse(booking.receipt_url, media_type="application/pdf", filename=f"receipt_{booking_id}.pdf")
+@router.post("/{booking_id}/extend", response_model=BookingOut)
+def extend_booking(booking_id: int, data: ExtendRequest, db: Session = Depends(get_db),
+                   user: User = Depends(get_current_user)):
+    booking = _get_own_booking(db, booking_id, user)
+    if booking.status not in (BookingStatus.reserved, BookingStatus.checked_in):
+        raise HTTPException(status_code=400, detail="Only upcoming or active bookings can be extended")
+    new_end = to_utc(data.end_time)
+    if new_end <= booking.end_time:
+        raise HTTPException(status_code=400, detail="New end time must be later than the current one")
+    if new_end - booking.start_time > timedelta(hours=settings.MAX_BOOKING_HOURS):
+        raise HTTPException(status_code=400, detail=f"A booking can be at most {settings.MAX_BOOKING_HOURS} hours long")
+
+    slot = db.query(ParkingSlot).filter(ParkingSlot.id == booking.slot_id).with_for_update().first()
+    clash = db.query(Booking.id).filter(
+        Booking.slot_id == slot.id, Booking.id != booking.id,
+        Booking.status == BookingStatus.reserved,
+        Booking.start_time < new_end, Booking.end_time > booking.end_time,
+    ).first()
+    if clash:
+        raise HTTPException(status_code=409, detail="The slot is reserved by someone else after your booking ends")
+
+    booking.end_time = new_end
+    _, booking.estimated_amount = bs.fare_for(booking.start_time, new_end, booking.price_per_hour)
+    db.commit()
+    db.refresh(booking)
+    return booking_out(booking)
+
+@router.get("/{booking_id}/receipt")
+def download_receipt(booking_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    allowed = (booking.user_id == user.id or user.role == UserRole.admin
+               or (user.role == UserRole.vendor and booking.zone.vendor_id == user.id))
+    if not allowed:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if not booking.receipt_path:
+        raise HTTPException(status_code=404, detail="The receipt is created when the car checks out")
+    return FileResponse(booking.receipt_path, media_type="application/pdf", filename=f"receipt_{booking.booking_code}.pdf")

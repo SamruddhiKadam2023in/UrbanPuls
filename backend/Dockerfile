@@ -1,19 +1,21 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Install system dependencies for OpenCV and psycopg2
-RUN apt-get update && apt-get install -y \
-    libpq-dev gcc libgl1-mesa-glx libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p receipts fines
+# Run as a non-root user; receipts, fines and uploads live in /app/data (mount a volume there)
+RUN useradd --create-home tpms && mkdir -p /app/data && chown -R tpms /app
+USER tpms
+ENV DATA_DIR=/app/data
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Apply database migrations, then start the API
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

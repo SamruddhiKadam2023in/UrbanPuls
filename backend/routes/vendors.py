@@ -1,30 +1,58 @@
+from datetime import timedelta
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+
 from core.database import get_db
-from core.security import get_current_user
-from models.parking import ParkingZone, ParkingSlot
+from core.security import require_roles
+from core.timeutil import utcnow, to_local
 from models.booking import Booking, BookingStatus
-from models.user import User
+from models.parking import ParkingZone
+from models.user import User, UserRole
 
 router = APIRouter()
+vendor_or_admin = require_roles(UserRole.vendor, UserRole.admin)
 
-@router.get("/my-zones")
-def vendor_zones(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role not in ["vendor", "admin"]:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Vendor access required")
-    zones = db.query(ParkingZone).filter(ParkingZone.vendor_id == current_user.id).all()
-    result = []
-    for z in zones:
-        available = sum(1 for s in z.slots if not s.is_occupied)
-        bookings_today = db.query(Booking).filter(Booking.zone_id == z.id, Booking.status == BookingStatus.active).count()
-        result.append({**z.__dict__, "available_slots": available, "active_bookings": bookings_today})
-    return result
+def _scope(q, db: Session, user: User):
+    """Limits a Booking query to the caller's zones (admins see everything)."""
+    if user.role == UserRole.admin:
+        return q
+    zone_ids = [z.id for z in db.query(ParkingZone.id).filter(ParkingZone.vendor_id == user.id).all()]
+    return q.filter(Booking.zone_id.in_(zone_ids))
 
 @router.get("/stats")
-def vendor_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    zones = db.query(ParkingZone).filter(ParkingZone.vendor_id == current_user.id).all()
-    zone_ids = [z.id for z in zones]
-    total_bookings = db.query(Booking).filter(Booking.zone_id.in_(zone_ids)).count()
-    total_revenue  = sum(b.total_amount for b in db.query(Booking).filter(Booking.zone_id.in_(zone_ids), Booking.status == BookingStatus.active).all())
-    return {"total_zones": len(zones), "total_bookings": total_bookings, "total_revenue": total_revenue}
+def vendor_stats(db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    zones_q = db.query(ParkingZone)
+    if user.role != UserRole.admin:
+        zones_q = zones_q.filter(ParkingZone.vendor_id == user.id)
+    total_zones = zones_q.count()
+
+    bookings = _scope(db.query(Booking), db, user)
+    total_bookings = bookings.count()
+    revenue = _scope(db.query(func.coalesce(func.sum(Booking.final_amount), 0.0))
+                     .filter(Booking.status == BookingStatus.completed), db, user).scalar()
+    parked_now = bookings.filter(Booking.status == BookingStatus.checked_in).count()
+    no_shows = bookings.filter(Booking.status == BookingStatus.no_show).count()
+    return {"total_zones": total_zones, "total_bookings": total_bookings, "total_revenue": float(revenue or 0),
+            "parked_now": parked_now, "no_shows": no_shows}
+
+@router.get("/trend")
+def booking_trend(days: int = 7, db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    """Bookings created and revenue collected per local day."""
+    days = max(1, min(days, 90))
+    today = to_local(utcnow()).date()
+    buckets = {today - timedelta(days=i): {"bookings": 0, "revenue": 0.0} for i in range(days - 1, -1, -1)}
+    since = utcnow() - timedelta(days=days + 1)
+
+    for b in _scope(db.query(Booking).filter(Booking.created_at >= since), db, user).all():
+        day = to_local(b.created_at).date()
+        if day in buckets:
+            buckets[day]["bookings"] += 1
+    for b in _scope(db.query(Booking).filter(Booking.status == BookingStatus.completed,
+                                             Booking.checked_out_at >= since), db, user).all():
+        day = to_local(b.checked_out_at).date()
+        if day in buckets:
+            buckets[day]["revenue"] += b.final_amount or 0
+
+    return [{"date": d.isoformat(), "day": d.strftime("%a"), "bookings": v["bookings"],
+             "revenue": round(v["revenue"], 2)} for d, v in buckets.items()]

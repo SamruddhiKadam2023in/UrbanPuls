@@ -1,49 +1,58 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy.orm import Session
+import logging
 from typing import Optional
-import cloudinary, cloudinary.uploader
-from core.database import get_db
-from core.security import get_current_user, get_admin_user
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+
 from core.config import settings
+from core.database import get_db
+from core.ratelimit import limiter
+from core.security import get_current_user, require_roles, require_verified
 from models.booking import Complaint, ComplaintStatus, ComplaintType
-from models.user import User
+from models.user import User, UserRole
 from services.pdf_service import generate_fine_pdf
 from services.sms_service import notify_police
+from services.storage_service import save_upload
 
+log = logging.getLogger("tpms.complaints")
 router = APIRouter()
+reviewers = require_roles(UserRole.admin, UserRole.police)
+admin_only = require_roles(UserRole.admin)
 
-cloudinary.config(
-    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-    api_key=settings.CLOUDINARY_API_KEY,
-    api_secret=settings.CLOUDINARY_API_SECRET
-)
+def _complaint_out(c: Complaint) -> dict:
+    return {
+        "id": c.id, "user_id": c.user_id, "complaint_type": c.complaint_type.value,
+        "description": c.description, "latitude": c.latitude, "longitude": c.longitude,
+        "photo_url": c.photo_url, "status": c.status.value, "points_awarded": c.points_awarded,
+        "fine_generated": c.fine_generated, "police_notified": c.police_notified,
+        "created_at": c.created_at, "updated_at": c.updated_at,
+    }
 
 @router.post("/", status_code=201)
+@limiter.limit("10/hour")
 async def submit_complaint(
+    request: Request,
     complaint_type: ComplaintType = Form(...),
-    description: str = Form(""),
-    latitude: float = Form(...),
-    longitude: float = Form(...),
+    description: str = Form("", max_length=2000),
+    latitude: float = Form(..., ge=-90, le=90),
+    longitude: float = Form(..., ge=-180, le=180),
     photo: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_verified),
 ):
     photo_url = None
-    if photo:
+    if photo and photo.filename:
         try:
-            contents = await photo.read()
-            result = cloudinary.uploader.upload(contents, folder="tpms/complaints")
-            photo_url = result.get("secure_url")
+            photo_url = await save_upload(photo, "complaints")
+        except HTTPException:
+            raise
         except Exception:
-            photo_url = None  # graceful fallback if Cloudinary not configured
+            log.exception("Photo upload failed")
+            raise HTTPException(status_code=502, detail="Photo upload failed, please try again")
 
     complaint = Complaint(
-        user_id=current_user.id,
-        complaint_type=complaint_type,
-        description=description,
-        latitude=latitude,
-        longitude=longitude,
-        photo_url=photo_url
+        user_id=current_user.id, complaint_type=complaint_type, description=description.strip() or None,
+        latitude=latitude, longitude=longitude, photo_url=photo_url,
     )
     db.add(complaint)
     db.commit()
@@ -51,60 +60,67 @@ async def submit_complaint(
     return {"message": "Complaint submitted", "complaint_id": complaint.id}
 
 @router.get("/")
-def get_complaints(status: Optional[str] = None, db: Session = Depends(get_db),
-                   admin: User = Depends(get_admin_user)):
+def get_complaints(status: Optional[ComplaintStatus] = None, db: Session = Depends(get_db),
+                   _: User = Depends(reviewers)):
     query = db.query(Complaint)
     if status:
         query = query.filter(Complaint.status == status)
-    return query.order_by(Complaint.created_at.desc()).all()
+    return [_complaint_out(c) for c in query.order_by(Complaint.created_at.desc()).all()]
 
 @router.get("/my")
 def my_complaints(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(Complaint).filter(Complaint.user_id == current_user.id).order_by(Complaint.created_at.desc()).all()
+    rows = db.query(Complaint).filter(Complaint.user_id == current_user.id).order_by(Complaint.created_at.desc()).all()
+    return [_complaint_out(c) for c in rows]
+
+def _pending(db: Session, complaint_id: int) -> Complaint:
+    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).with_for_update().first()
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    if complaint.status != ComplaintStatus.pending:
+        raise HTTPException(status_code=400, detail=f"Complaint is already {complaint.status.value}")
+    return complaint
 
 @router.patch("/{complaint_id}/verify")
-def verify_complaint(complaint_id: int, db: Session = Depends(get_db),
-                     admin: User = Depends(get_admin_user)):
-    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Complaint not found")
-
+def verify_complaint(complaint_id: int, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    complaint = _pending(db, complaint_id)
     complaint.status = ComplaintStatus.verified
-    complaint.points_awarded = 10
-    user = db.query(User).filter(User.id == complaint.user_id).first()
-    if user:
-        user.points += 10
+    complaint.reviewed_by = admin.id
+    complaint.points_awarded = settings.COMPLAINT_REWARD_POINTS
+    reporter = db.get(User, complaint.user_id)
+    if reporter:
+        reporter.points += settings.COMPLAINT_REWARD_POINTS
 
-    # Generate fine PDF
-    fine_path = generate_fine_pdf(complaint)
-    complaint.fine_generated = True
-
-    # Notify police via SMS
     try:
-        notify_police(complaint)
-        complaint.police_notified = True
+        complaint.fine_path = generate_fine_pdf(complaint)
+        complaint.fine_generated = True
     except Exception:
-        pass
-
+        log.exception("Fine PDF generation failed for complaint %s", complaint.id)
+    complaint.police_notified = notify_police(complaint)
     db.commit()
-    return {"message": "Complaint verified, points awarded, fine generated", "fine_pdf": fine_path}
+    return {"message": "Complaint verified and points awarded", "fine_generated": complaint.fine_generated}
 
 @router.patch("/{complaint_id}/reject")
-def reject_complaint(complaint_id: int, db: Session = Depends(get_db),
-                     admin: User = Depends(get_admin_user)):
-    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Complaint not found")
+def reject_complaint(complaint_id: int, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    complaint = _pending(db, complaint_id)
     complaint.status = ComplaintStatus.rejected
+    complaint.reviewed_by = admin.id
     db.commit()
     return {"message": "Complaint rejected"}
 
-@router.post("/redeem-points")
-def redeem_points(points: int, db: Session = Depends(get_db),
-                  current_user: User = Depends(get_current_user)):
-    if current_user.points < points:
-        raise HTTPException(status_code=400, detail="Insufficient points")
-    discount = points * 0.5  # 1 point = ₹0.5 discount
-    current_user.points -= points
+@router.patch("/{complaint_id}/resolve")
+def resolve_complaint(complaint_id: int, db: Session = Depends(get_db), user: User = Depends(reviewers)):
+    complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    if complaint.status != ComplaintStatus.verified:
+        raise HTTPException(status_code=400, detail="Only verified complaints can be resolved")
+    complaint.status = ComplaintStatus.resolved
     db.commit()
-    return {"message": "Points redeemed", "discount_amount": discount, "remaining_points": current_user.points}
+    return {"message": "Complaint resolved"}
+
+@router.get("/{complaint_id}/fine")
+def download_fine(complaint_id: int, db: Session = Depends(get_db), _: User = Depends(reviewers)):
+    complaint = db.get(Complaint, complaint_id)
+    if not complaint or not complaint.fine_path:
+        raise HTTPException(status_code=404, detail="No fine for this complaint")
+    return FileResponse(complaint.fine_path, media_type="application/pdf", filename=f"fine_{complaint.id:06d}.pdf")

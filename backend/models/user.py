@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from core.database import Base
+from core.timeutil import UTCDateTime, utcnow
 import enum
 
 class UserRole(str, enum.Enum):
@@ -12,16 +12,18 @@ class UserRole(str, enum.Enum):
 
 class User(Base):
     __tablename__ = "users"
-    id            = Column(Integer, primary_key=True, index=True)
-    name          = Column(String(100), nullable=False)
-    email         = Column(String(100), unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    role          = Column(Enum(UserRole), default=UserRole.user)
-    phone         = Column(String(20), nullable=True)
-    points        = Column(Integer, default=0)
-    preferred_lang = Column(String(10), default="en")
-    is_active     = Column(Boolean, default=True)
-    created_at    = Column(DateTime(timezone=True), server_default=func.now())
+    id               = Column(Integer, primary_key=True, index=True)
+    name             = Column(String(100), nullable=False)
+    email            = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password  = Column(String(100), nullable=False)
+    role             = Column(Enum(UserRole, name="user_role"), default=UserRole.user, nullable=False)
+    phone            = Column(String(20), nullable=True)
+    points           = Column(Integer, default=0, nullable=False)
+    preferred_lang   = Column(String(10), default="en", nullable=False)
+    is_active        = Column(Boolean, default=True, nullable=False)
+    email_verified   = Column(Boolean, default=False, nullable=False)
+    vendor_requested = Column(Boolean, default=False, nullable=False)   # awaiting admin approval
+    created_at       = Column(UTCDateTime, default=utcnow, nullable=False)
 
-    bookings   = relationship("Booking",   back_populates="user")
-    complaints = relationship("Complaint", back_populates="user")
+    bookings   = relationship("Booking",   back_populates="user", foreign_keys="Booking.user_id")
+    complaints = relationship("Complaint", back_populates="user", foreign_keys="Complaint.user_id")
