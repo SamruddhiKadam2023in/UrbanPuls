@@ -28,6 +28,7 @@ import Zones          from './pages/Zones'
 import Admin          from './pages/Admin'
 import Police         from './pages/Police'
 import Staff          from './pages/Staff'
+import Cameras        from './pages/Cameras'
 import Landing        from './pages/Landing'
 import { Privacy, Terms } from './pages/Legal'
 
@@ -89,6 +90,7 @@ export default function App() {
             <Route path="/police"        element={p(<Police />, 'police')} />
             <Route path="/admin"         element={p(<Admin />, 'admin')} />
             <Route path="/staff"         element={p(<Staff />, 'partner')} />
+            <Route path="/cameras"       element={p(<Cameras />, 'detection')} />
             <Route path="*"              element={<Navigate to="/" replace />} />
           </Routes>
         </main>

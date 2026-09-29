@@ -44,7 +44,7 @@ export default function LiveConnection() {
         zoneTimer.current = setTimeout(() => dispatch(fetchZones()), 400)
       } else if (msg.type === 'violation') {
         dispatch(addViolation(msg))
-        toast.error(`🚨 Illegal parking detected${msg.zone_id ? ` in zone ${msg.zone_id}` : ''}`, { id: 'violation' })
+        toast.error(`🚨 ${i18n.t('detection.live_alert', 'Illegal parking detected')}${msg.camera ? `: ${msg.camera}` : ''}`, { id: 'violation' })
         speakViolationAlert(i18n.language)
       }
     }

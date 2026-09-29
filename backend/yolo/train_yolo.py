@@ -1,13 +1,17 @@
 """
-YOLO Training Script for TPMS Illegal Parking Detection
-========================================================
-Step 1: Label your images on Roboflow (https://roboflow.com)
-Step 2: Export as YOLOv11 format → download ZIP
-Step 3: Run this script
+YOLO model tools for TPMS
+=========================
+The app ships with the pre-trained YOLO11n model (80 COCO classes) as yolo/model.onnx. It detects
+vehicles; whether one is parked illegally comes from the no-parking areas drawn on each camera.
 
-Usage:
-    pip install ultralytics
-    python train_yolo.py
+Run these in a separate environment, not the app's venv (PyTorch is large and only needed here):
+    python -m venv C:/tpms-yolo && C:/tpms-yolo/Scripts/pip install ultralytics onnx onnxslim
+
+    python train_yolo.py export-pretrained   # re-create model.onnx + labels.txt from YOLO11n
+    python train_yolo.py train               # train on your own labelled images (dataset/data.yaml)
+    python train_yolo.py export <weights.pt> # use your trained model in the app
+
+YOLO11 models are released by Ultralytics under the AGPL-3.0 licence.
 """
 
 from ultralytics import YOLO
@@ -108,6 +112,16 @@ if __name__ == "__main__":
             best = f"{PROJECT}/{RUN_NAME}/weights/best.pt"
             export_onnx(best)
 
+    elif cmd == "export-pretrained":
+        model = YOLO("yolo11n.pt")
+        onnx_path = model.export(format="onnx", imgsz=IMG_SIZE, opset=12, simplify=True, dynamic=False)
+        import shutil
+        here = os.path.dirname(os.path.abspath(__file__))
+        shutil.copy(onnx_path, os.path.join(here, "model.onnx"))
+        with open(os.path.join(here, "labels.txt"), "w", encoding="utf-8") as f:
+            f.write("\n".join(model.names[i] for i in range(len(model.names))) + "\n")
+        print("✅ model.onnx and labels.txt written to", here)
+
     elif cmd == "export":
         weights = sys.argv[2] if len(sys.argv) > 2 else f"{PROJECT}/{RUN_NAME}/weights/best.pt"
         export_onnx(weights)
@@ -122,4 +136,4 @@ if __name__ == "__main__":
         validate(weights)
 
     else:
-        print("Usage: python train_yolo.py [train|export|test|validate]")
+        print("Usage: python train_yolo.py [export-pretrained|train|export|test|validate]")

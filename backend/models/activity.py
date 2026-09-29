@@ -40,3 +40,20 @@ class ComplaintEvent(Base):
     created_at   = Column(UTCDateTime, default=utcnow, nullable=False)
 
     actor = relationship("User")
+
+class Camera(Base):
+    """A fixed viewpoint (e.g. a CCTV camera) with no-parking areas drawn on its reference photo."""
+    __tablename__ = "cameras"
+    id           = Column(Integer, primary_key=True, index=True)
+    name         = Column(String(100), nullable=False)
+    zone_id      = Column(Integer, ForeignKey("parking_zones.id"), nullable=True, index=True)
+    owner_id     = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    image_url    = Column(String(500), nullable=False)
+    image_width  = Column(Integer, nullable=False)
+    image_height = Column(Integer, nullable=False)
+    areas        = Column(Text, nullable=False, default="[]")   # JSON: [[[x, y], ...], ...], normalised 0..1
+    is_active    = Column(Boolean, default=True, nullable=False)
+    created_at   = Column(UTCDateTime, default=utcnow, nullable=False)
+
+    zone  = relationship("ParkingZone")
+    owner = relationship("User")

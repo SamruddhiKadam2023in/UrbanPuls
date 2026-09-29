@@ -153,7 +153,11 @@ Opens at http://localhost:5173. Migrations run automatically when the backend st
 
 ## Violation detection (YOLO)
 
-Detection stays switched off in production until a trained model exists at `backend/yolo/model.onnx`. In development it returns fixed sample results. Only the `illegal_parking` label counts as a violation. To train a model, see `backend/yolo/train_yolo.py`.
+`backend/yolo/model.onnx` is the pre-trained **YOLO11n** model (runs on the CPU through OpenCV). It finds cars, two-wheelers, buses, trucks and bicycles in a photo.
+
+Whether a vehicle is parked *illegally* depends on where it stands, so staff first add a **camera** (Detection → Cameras) with a reference photo and draw its **no-parking areas**. When a photo from that camera is checked, any vehicle whose wheels (the bottom-centre of its box) are inside an area is a violation, and a live alert goes to staff.
+
+To rebuild the model or train your own, see `backend/yolo/train_yolo.py`. YOLO11 is released by Ultralytics under the AGPL-3.0 licence.
 
 ## API docs
 

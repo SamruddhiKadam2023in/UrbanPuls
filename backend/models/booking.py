@@ -104,6 +104,7 @@ class DetectionLog(Base):
     image_url    = Column(String(500), nullable=True)
     detections   = Column(Text, nullable=True)   # JSON string
     zone_id      = Column(Integer, ForeignKey("parking_zones.id"), nullable=True)
+    camera_id    = Column(Integer, ForeignKey("cameras.id"), nullable=True, index=True)
     is_violation = Column(Boolean, default=False, nullable=False)
     created_by   = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at   = Column(UTCDateTime, default=utcnow, nullable=False)

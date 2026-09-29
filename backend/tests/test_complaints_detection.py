@@ -38,6 +38,7 @@ def _jpeg() -> bytes:
 def test_detection_disabled_without_model_when_mock_not_allowed(client, db, monkeypatch):
     make_user(db, "p@test.com", UserRole.police)
     monkeypatch.setattr(settings, "YOLO_ALLOW_MOCK", False)
+    monkeypatch.setattr(detection, "model_available", lambda: False)   # as if model.onnx were missing
     res = client.post("/api/detect/image", headers=auth(client, "p@test.com"),
                       files={"file": ("a.jpg", _jpeg(), "image/jpeg")})
     assert res.status_code == 503
