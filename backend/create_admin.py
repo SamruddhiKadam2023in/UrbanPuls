@@ -17,7 +17,7 @@ from core.security import hash_password, validate_password
 from models.user import User, UserRole
 
 def main():
-    parser = argparse.ArgumentParser(description="Create a TPMS administrator")
+    parser = argparse.ArgumentParser(description="Create an UrbanPuls administrator")
     parser.add_argument("--email", required=True)
     parser.add_argument("--name", required=True)
     args = parser.parse_args()

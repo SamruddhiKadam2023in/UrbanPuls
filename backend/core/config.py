@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "TPMS <no-reply@tpms.local>"
+    SMTP_FROM: str = "UrbanPuls <no-reply@urbanpuls.local>"
     SMTP_USE_TLS: bool = True
 
     # ── Booking rules ────────────────────────────────────────────────────────

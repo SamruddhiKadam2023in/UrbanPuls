@@ -27,10 +27,10 @@ if settings.is_production:
 
 DEMO_USERS = [
     # name, email, password, role, points
-    ("Admin User",   "admin@tpms.com",  "admin123",  UserRole.admin,  0),
-    ("Partner One",  "vendor@tpms.com", "vendor123", UserRole.vendor, 0),
-    ("Test User",    "user@tpms.com",   "user123",   UserRole.user,   50),
-    ("Field Officer", "police@tpms.com", "police123", UserRole.police, 0),
+    ("Admin User",   "admin@urbanpuls.com",  "admin123",  UserRole.admin,  0),
+    ("Partner One",  "vendor@urbanpuls.com", "vendor123", UserRole.vendor, 0),
+    ("Test User",    "user@urbanpuls.com",   "user123",   UserRole.user,   50),
+    ("Field Officer", "police@urbanpuls.com", "police123", UserRole.police, 0),
 ]
 
 TWO_WHEELER_SLOTS, TWO_WHEELER_PRICE = 15, 10.0
@@ -58,17 +58,17 @@ def main():
         users[role] = user
 
     vendor = users[UserRole.vendor]
-    if not db.query(User).filter(User.email == "gate@tpms.com").first():
-        db.add(User(name="Gate Attendant", email="gate@tpms.com", hashed_password=hash_password("gate12345"),
+    if not db.query(User).filter(User.email == "gate@urbanpuls.com").first():
+        db.add(User(name="Gate Attendant", email="gate@urbanpuls.com", hashed_password=hash_password("gate12345"),
                     role=UserRole.attendant, employer_id=vendor.id, email_verified=True))
-        print("Created attendant gate@tpms.com / gate12345 (works for vendor@tpms.com)")
+        print("Created attendant gate@urbanpuls.com / gate12345 (works for vendor@urbanpuls.com)")
     zone_ids = []
     for name, addr, lat, lng, slots, price in ZONES:
         zone = db.query(ParkingZone).filter(ParkingZone.name == name).first()
         if not zone:
             zone = ParkingZone(name=name, address=addr, latitude=lat, longitude=lng, total_slots=slots,
                                price_per_hour=price, vendor_id=vendor.id,
-                               upi_id="tpms.demo@upi", upi_name=name, two_wheeler_price_per_hour=TWO_WHEELER_PRICE)
+                               upi_id="urbanpuls.demo@upi", upi_name=name, two_wheeler_price_per_hour=TWO_WHEELER_PRICE)
             db.add(zone)
             db.flush()
             for i in range(1, slots + 1):

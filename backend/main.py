@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Traffic & Parking Management System",
-    description="API for TPMS: parking reservations with pay-at-the-gate, complaints and traffic insights",
+    description="API for UrbanPuls: parking reservations with pay-at-the-gate, complaints and traffic insights",
     version="2.0.0",
     lifespan=lifespan,
     docs_url=None if settings.is_production else "/docs",
@@ -99,4 +99,4 @@ def health():
 
 @app.get("/")
 def root():
-    return {"message": "TPMS API is running"}
+    return {"message": "UrbanPuls API is running"}

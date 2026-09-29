@@ -1,5 +1,5 @@
 """
-YOLO model tools for TPMS
+YOLO model tools for UrbanPuls
 =========================
 The app ships with the pre-trained YOLO11n model (80 COCO classes) as yolo/model.onnx. It detects
 vehicles; whether one is parked illegally comes from the no-parking areas drawn on each camera.

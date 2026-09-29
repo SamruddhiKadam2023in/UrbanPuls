@@ -71,7 +71,7 @@ def _quote(db: Session, booking: Booking) -> dict:
     upi_uri = None
     if zone.upi_id and payable > 0:
         upi_uri = (f"upi://pay?pa={quote(zone.upi_id)}&pn={quote(zone.upi_name or zone.name)}"
-                   f"&am={payable:.2f}&cu=INR&tn={quote('TPMS ' + booking.booking_code)}")
+                   f"&am={payable:.2f}&cu=INR&tn={quote('UrbanPuls ' + booking.booking_code)}")
     return {
         "booking": booking_out(booking),
         "checked_in_at": booking.checked_in_at,

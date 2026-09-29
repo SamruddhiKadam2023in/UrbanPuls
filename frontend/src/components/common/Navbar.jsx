@@ -109,7 +109,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', marginRight: '8px', flexShrink: 0 }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>🅿</div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: '800', fontSize: '16px' }}><span className="gradient-text">TPMS</span></span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: '800', fontSize: '16px' }}><span className="gradient-text">UrbanPuls</span></span>
         </Link>
 
         {/* Nav links */}

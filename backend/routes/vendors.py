@@ -164,7 +164,7 @@ def revenue_report(period: Literal["day", "week", "month"] = "day",
                      **{k: round(v, 2) if isinstance(v, float) else v for k, v in r.items()}})
     totals = {k: round(sum(r[k] for r in data), 2) for k, _ in REPORT_COLUMNS[1:]}
 
-    filename = f"tpms_report_{period}_{start}_{end}"
+    filename = f"urbanpuls_report_{period}_{start}_{end}"
     if format == "csv":
         buf = io.StringIO()
         w = csv.writer(buf)
@@ -177,7 +177,7 @@ def revenue_report(period: Literal["day", "week", "month"] = "day",
     if format == "pdf":
         zone_name = db.get(ParkingZone, zone_id).name if zone_id else ("All zones" if user.role == UserRole.admin else "All your zones")
         pdf = generate_report_pdf(
-            f"TPMS revenue report ({period})", f"{zone_name} · {start.strftime('%d %b %Y')} to {end.strftime('%d %b %Y')}",
+            f"UrbanPuls revenue report ({period})", f"{zone_name} · {start.strftime('%d %b %Y')} to {end.strftime('%d %b %Y')}",
             [h for _, h in REPORT_COLUMNS],
             [[r[k] for k, _ in REPORT_COLUMNS] for r in data] + [["Total", *[totals[k] for k, _ in REPORT_COLUMNS[1:]]]],
         )

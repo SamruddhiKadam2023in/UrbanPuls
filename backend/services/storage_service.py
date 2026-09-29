@@ -30,7 +30,7 @@ def store_bytes(contents: bytes, folder: str, extension: str) -> str:
         cloudinary.config(cloud_name=settings.CLOUDINARY_CLOUD_NAME,
                           api_key=settings.CLOUDINARY_API_KEY,
                           api_secret=settings.CLOUDINARY_API_SECRET)
-        result = cloudinary.uploader.upload(contents, folder=f"tpms/{folder}", resource_type="auto")
+        result = cloudinary.uploader.upload(contents, folder=f"urbanpuls/{folder}", resource_type="auto")
         return result["secure_url"]
 
     target_dir = settings.uploads_dir / folder

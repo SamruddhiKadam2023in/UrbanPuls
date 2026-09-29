@@ -253,7 +253,7 @@ class DeleteAccount(BaseModel):
 
 @router.get("/me/export")
 def export_my_data(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Everything TPMS stores about the signed-in person, as one JSON download."""
+    """Everything UrbanPuls stores about the signed-in person, as one JSON download."""
     from models.activity import Notification, Rating
     from models.booking import Booking, Complaint
     from schemas import booking_out
@@ -274,7 +274,7 @@ def export_my_data(db: Session = Depends(get_db), user: User = Depends(get_curre
         "notifications": [{"title": n.title, "message": n.message, "created_at": n.created_at} for n in notes],
     }
     return JSONResponse(content=jsonable_encoder(data),
-                        headers={"Content-Disposition": f'attachment; filename="tpms-my-data-{user.id}.json"'})
+                        headers={"Content-Disposition": f'attachment; filename="urbanpuls-my-data-{user.id}.json"'})
 
 @router.delete("/me")
 @limiter.limit("5/hour")
@@ -293,7 +293,7 @@ def delete_my_account(request: Request, data: DeleteAccount, db: Session = Depen
     if db.query(Booking.id).filter(Booking.user_id == user.id, Booking.status == BookingStatus.checked_in).first():
         raise HTTPException(status_code=400, detail="Your vehicle is still parked. Check out at the gate first.")
     if user.role == UserRole.vendor and db.query(ParkingZone.id).filter(ParkingZone.vendor_id == user.id).first():
-        raise HTTPException(status_code=400, detail="You still own parking lots. Contact the TPMS administrator to transfer or close them first.")
+        raise HTTPException(status_code=400, detail="You still own parking lots. Contact the UrbanPuls administrator to transfer or close them first.")
     if user.role == UserRole.admin and db.query(User).filter(User.role == UserRole.admin, User.is_active.is_(True),
                                                               User.id != user.id).count() == 0:
         raise HTTPException(status_code=400, detail="You are the only administrator. Make someone else an admin first.")

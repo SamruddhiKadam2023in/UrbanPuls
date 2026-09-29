@@ -22,7 +22,7 @@ export default function YourData() {
     try {
       const res = await api.get('/auth/me/export', { responseType: 'blob' })
       const url = URL.createObjectURL(res.data)
-      const a = document.createElement('a'); a.href = url; a.download = 'tpms-my-data.json'; a.click()
+      const a = document.createElement('a'); a.href = url; a.download = 'urbanpuls-my-data.json'; a.click()
       URL.revokeObjectURL(url)
     } catch (e) { toast.error(errorMessage(e)) }
   }

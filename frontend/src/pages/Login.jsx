@@ -11,11 +11,11 @@ import { homeFor } from '../utils/roles'
 // The buttons show in `npm run dev`, or in a build made with VITE_SHOW_DEMO_LOGINS=true (local Docker only).
 const SHOW_DEMO = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_LOGINS === 'true'
 const DEMO_ACCOUNTS = SHOW_DEMO ? [
-  ['user',   '🚗', 'user@tpms.com',   'user123'],
-  ['vendor', '🏢', 'vendor@tpms.com', 'vendor123'],
-  ['attendant', '🚧', 'gate@tpms.com', 'gate12345'],
-  ['police', '🦺', 'police@tpms.com', 'police123'],
-  ['admin',  '🛡', 'admin@tpms.com',  'admin123'],
+  ['user',   '🚗', 'user@urbanpuls.com',   'user123'],
+  ['vendor', '🏢', 'vendor@urbanpuls.com', 'vendor123'],
+  ['attendant', '🚧', 'gate@urbanpuls.com', 'gate12345'],
+  ['police', '🦺', 'police@urbanpuls.com', 'police123'],
+  ['admin',  '🛡', 'admin@urbanpuls.com',  'admin123'],
 ] : []
 
 export default function Login() {
@@ -35,7 +35,7 @@ export default function Login() {
   const WHO = [
     { icon: '🚗', title: t('who.user_title', 'Drivers'), text: t('who.user_text', 'Create a free account and start reserving parking.'), link: '/register', cta: t('who.user_cta', 'Sign up') },
     { icon: '🏢', title: t('who.vendor_title', 'Parking Partners'), text: t('who.vendor_text', 'Own or run a parking lot? Sign up and choose "Parking Partner". Once an administrator approves you, add your lots and start taking bookings.'), link: '/register', cta: t('who.vendor_cta', 'Become a partner') },
-    { icon: '🦺', title: t('who.police_title', 'Field Officers'), text: t('who.police_text', 'They act on verified complaints on the ground. Accounts are created by the TPMS administrator; sign in above with the email and password they gave you.') },
+    { icon: '🦺', title: t('who.police_title', 'Field Officers'), text: t('who.police_text', 'They act on verified complaints on the ground. Accounts are created by the UrbanPuls administrator; sign in above with the email and password they gave you.') },
     { icon: '🛡', title: t('who.admin_title', 'Administrators'), text: t('who.admin_text', 'Accounts are set up by the operator of this service. Sign in above.') },
   ]
 
@@ -59,7 +59,7 @@ export default function Login() {
 
       <div className="card" style={{ marginTop: '16px', padding: '18px' }}>
         <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--c-text)', marginBottom: '12px', fontFamily: 'var(--font-display)' }}>
-          {t('who.title', 'Who is TPMS for?')}
+          {t('who.title', 'Who is UrbanPuls for?')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {WHO.map(w => (
@@ -78,7 +78,7 @@ export default function Login() {
   )
 
   return (
-    <AuthShell title={<span className="gradient-text">TPMS</span>} subtitle={t('app.full_name', 'Traffic & Parking Management System')} footer={footer}>
+    <AuthShell title={<span className="gradient-text">UrbanPuls</span>} subtitle={t('app.full_name', 'Traffic & Parking Management System')} footer={footer}>
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: '700', color: 'var(--c-text)' }}>{t('auth.login_title')}</h2>
         <p style={{ color: 'var(--c-text2)', fontSize: '13px', marginTop: '4px' }}>{t('auth.login_sub_all', 'One sign-in for drivers, Parking Partners, Field Officers and administrators')}</p>

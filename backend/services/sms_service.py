@@ -11,7 +11,7 @@ def notify_police(complaint) -> bool:
         from twilio.rest import Client
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         message = (
-            f"TPMS ALERT\n"
+            f"UrbanPuls ALERT\n"
             f"Complaint: {complaint.complaint_type.value.replace('_', ' ').title()}\n"
             f"Location: https://maps.google.com/?q={complaint.latitude},{complaint.longitude}\n"
             f"Fine ID: FINE-{complaint.id:06d}"

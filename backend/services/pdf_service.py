@@ -36,7 +36,7 @@ def generate_receipt(booking, zone, slot, customer_name: str) -> str:
     settings.receipts_dir.mkdir(parents=True, exist_ok=True)
     path = settings.receipts_dir / f"receipt_{booking.id}_{int(utcnow().timestamp())}.pdf"
     rows = [
-        ["Receipt No.",   f"TPMS-{booking.id:06d}"],
+        ["Receipt No.",   f"UP-{booking.id:06d}"],
         ["Booking Code",  booking.booking_code],
         ["Customer",      customer_name],
         ["Vehicle No.",   booking.vehicle_number],
@@ -52,8 +52,8 @@ def generate_receipt(booking, zone, slot, customer_name: str) -> str:
         ["Payment Method", booking.payment_method.value.upper() if booking.payment_method else "N/A"],
         ["Issued At",     fmt_local(utcnow())],
     ]
-    _build(path, "TPMS - Parking Receipt", "#1D9E75", "#E1F5EE", "#085041", "#5DCAA5", "#F5FEFB",
-           rows, "Payment collected at the parking gate. Thank you for using TPMS. Drive safe!")
+    _build(path, "UrbanPuls - Parking Receipt", "#1D9E75", "#E1F5EE", "#085041", "#5DCAA5", "#F5FEFB",
+           rows, "Payment collected at the parking gate. Thank you for using UrbanPuls. Drive safe!")
     return str(path)
 
 def generate_fine_pdf(complaint) -> str:
@@ -68,10 +68,10 @@ def generate_fine_pdf(complaint) -> str:
         ["Reported At",    fmt_local(complaint.created_at)],
         ["Photo Evidence", "Attached" if complaint.photo_url else "None"],
         ["Fine Amount",    _rs(500)],
-        ["Issued By",      "TPMS"],
+        ["Issued By",      "UrbanPuls"],
     ]
-    _build(path, "TPMS - Traffic Violation Fine", "#D85A30", "#FAECE7", "#712B13", "#F0997B", "#FFFAF8",
-           rows, "This fine was generated after the complaint was verified by a TPMS administrator.")
+    _build(path, "UrbanPuls - Traffic Violation Fine", "#D85A30", "#FAECE7", "#712B13", "#F0997B", "#FFFAF8",
+           rows, "This fine was generated after the complaint was verified by an UrbanPuls administrator.")
     return str(path)
 
 def generate_report_pdf(title: str, subtitle: str, headers: list[str], rows: list[list]) -> bytes:

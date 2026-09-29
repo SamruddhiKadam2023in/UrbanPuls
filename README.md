@@ -1,4 +1,4 @@
-# 🅿 TPMS — Traffic & Parking Management System
+# 🅿 UrbanPuls — Traffic & Parking Management System
 
 A full-stack web app for city parking, built for Mumbai. Drivers reserve car or two-wheeler parking and **pay at the gate** only for the time they actually park. Parking lot owners run their gates from a phone or tablet. Citizens report illegal parking, and a YOLO model finds vehicles standing in no-parking areas.
 
@@ -71,7 +71,7 @@ Available in **English, हिंदी and मराठी**.
 | 🏢 **Parking Partner** | Owner or operator of a parking lot (needs admin approval) | Run the gate, manage lots and prices, add gate staff, see revenue | Gate, Zones, Reports, Staff |
 | 🚧 **Gate Attendant** | Staff added by a Parking Partner | Check cars in and out and record payments for their employer's lots only | Gate |
 | 🦺 **Field Officer** | Staff who act on the ground (your team, lot security, or traffic police) | Resolve verified complaints, run violation detection | Enforcement, Detection, Cameras |
-| 🛡 **Admin** | The operator of TPMS | Verify complaints, approve partners, manage users and staff accounts | Dashboard, Admin |
+| 🛡 **Admin** | The operator of UrbanPuls | Verify complaints, approve partners, manage users and staff accounts | Dashboard, Admin |
 
 Staff roles can still park like drivers from the **"Park a car"** menu. Nobody can make themselves an admin or partner at sign-up.
 
@@ -135,11 +135,11 @@ Created by `seed.py` (never in production). The sign-in page has one-click butto
 
 | Role | Email | Password |
 |------|-------|----------|
-| Driver | user@tpms.com | user123 |
-| Parking Partner | vendor@tpms.com | vendor123 |
-| Gate Attendant (works for the demo partner) | gate@tpms.com | gate12345 |
-| Field Officer | police@tpms.com | police123 |
-| Admin | admin@tpms.com | admin123 |
+| Driver | user@urbanpuls.com | user123 |
+| Parking Partner | vendor@urbanpuls.com | vendor123 |
+| Gate Attendant (works for the demo partner) | gate@urbanpuls.com | gate12345 |
+| Field Officer | police@urbanpuls.com | police123 |
+| Admin | admin@urbanpuls.com | admin123 |
 
 A good first test: sign in as the driver in one window and the Parking Partner in a private window. Reserve a slot as the driver, then check it in on the partner's Gate screen; the driver's page updates live.
 
@@ -163,7 +163,7 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor D as Driver
-    participant T as TPMS
+    participant T as UrbanPuls
     actor P as Parking Partner / Gate Attendant
     D->>T: Reserve slot for a time window
     T-->>D: Booking code + QR (nothing paid)
@@ -300,7 +300,7 @@ python create_admin.py --email you@example.com --name "Your Name"
 
 Copyright © 2026 Samruddhi Sanjay Kadam
 
-TPMS is free software: you can redistribute it and/or modify it under the terms of the **GNU Affero General Public License, version 3** (AGPL-3.0), as published by the Free Software Foundation. See [LICENSE](LICENSE) for the full text.
+UrbanPuls is free software: you can redistribute it and/or modify it under the terms of the **GNU Affero General Public License, version 3** (AGPL-3.0), as published by the Free Software Foundation. See [LICENSE](LICENSE) for the full text.
 
 In short: you may use, change and share this project, including commercially. If you distribute a modified version, or run one as a service that other people use over a network, you must make your complete source code available to them under the same licence.
 

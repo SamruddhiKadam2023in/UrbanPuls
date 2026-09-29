@@ -8,7 +8,7 @@ const UPDATED = '29 September 2026'
 
 const privacy = (s) => [
   ['Who we are', [
-    `${s.operator} runs this parking service ("TPMS"). For any privacy question or request, write to ${s.contactEmail}. This address also reaches our Grievance Officer under the Digital Personal Data Protection Act, 2023.`,
+    `${s.operator} runs this parking service ("UrbanPuls"). For any privacy question or request, write to ${s.contactEmail}. This address also reaches our Grievance Officer under the Digital Personal Data Protection Act, 2023.`,
   ]],
   ['What we collect', [
     'Account details: your name, email address, phone number (optional) and password (stored only as a secure hash).',
@@ -40,7 +40,7 @@ const privacy = (s) => [
     'Withdraw consent or raise a grievance: write to the address above. We reply within 30 days. If you are not satisfied, you may complain to the Data Protection Board of India.',
   ]],
   ['Children', [
-    'TPMS is meant for adults. If you are under 18, you may use it only with the consent of a parent or guardian.',
+    'UrbanPuls is meant for adults. If you are under 18, you may use it only with the consent of a parent or guardian.',
   ]],
   ['Security', [
     'Passwords are hashed, connections are encrypted (HTTPS), access is limited by role, and changing your password signs you out on every other device.',
@@ -52,7 +52,7 @@ const privacy = (s) => [
 
 const terms = (s) => [
   ['The service', [
-    `TPMS lets drivers find and reserve parking at lots run by independent Parking Partners, and lets anyone report parking and traffic problems. The service is run by ${s.operator}.`,
+    `UrbanPuls lets drivers find and reserve parking at lots run by independent Parking Partners, and lets anyone report parking and traffic problems. The service is run by ${s.operator}.`,
   ]],
   ['Reservations and payment', [
     'A reservation holds a slot for the time you choose. Nothing is charged when you reserve.',
@@ -61,11 +61,11 @@ const terms = (s) => [
     'Please cancel reservations you cannot use.',
   ]],
   ['Parking Partners', [
-    'Parking Partners run their own lots and set their own prices. They are responsible for the lot, its staff, and collecting and recording payments correctly. TPMS is not a party to the payment between you and the Parking Partner.',
+    'Parking Partners run their own lots and set their own prices. They are responsible for the lot, its staff, and collecting and recording payments correctly. UrbanPuls is not a party to the payment between you and the Parking Partner.',
   ]],
   ['Complaints and reward points', [
     'Reports must be true and made in good faith. Photos should show the problem, not identify bystanders. False or abusive reports may be rejected and can lead to your account being closed.',
-    'Reward points have no cash value and can only be used as a discount on parking through TPMS.',
+    'Reward points have no cash value and can only be used as a discount on parking through UrbanPuls.',
   ]],
   ['Your account', [
     'Keep your password secret. You are responsible for bookings made from your account. We may suspend accounts that break these terms or misuse the service.',

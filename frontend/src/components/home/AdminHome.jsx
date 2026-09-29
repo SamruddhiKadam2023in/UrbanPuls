@@ -27,7 +27,7 @@ export default function AdminHome() {
 
   return (
     <div className="page-wrap fade-in">
-      <Greeting subtitle={t('admin_home.subtitle', 'What needs your attention across TPMS')} />
+      <Greeting subtitle={t('admin_home.subtitle', 'What needs your attention across UrbanPuls')} />
 
       <Section title={`📌 ${t('admin_home.todo', 'To do')}`}>
         {todo.length === 0

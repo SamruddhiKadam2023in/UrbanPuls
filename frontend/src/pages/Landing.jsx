@@ -12,7 +12,7 @@ export function PublicHeader() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', marginRight: 'auto' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🅿</div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}><span className="gradient-text">TPMS</span></span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}><span className="gradient-text">UrbanPuls</span></span>
         </Link>
         <LangSwitch />
         <Link to="/login" className="btn btn-ghost btn-sm">{t('auth.sign_in', 'Sign in')}</Link>
@@ -103,7 +103,7 @@ export default function Landing() {
         </section>
 
         <section style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 20px' }}>
-          <h2 className="section-header" style={{ textAlign: 'center', fontSize: '24px', marginBottom: '20px' }}>{t('who.title', 'Who is TPMS for?')}</h2>
+          <h2 className="section-header" style={{ textAlign: 'center', fontSize: '24px', marginBottom: '20px' }}>{t('who.title', 'Who is UrbanPuls for?')}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
             {audiences.map(([icon, title, text, link, cta]) => (
               <div key={title} className="card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>

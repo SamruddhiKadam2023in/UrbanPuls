@@ -30,7 +30,7 @@ def notify(db: Session, user: User | None, type_: str, message_key: str,
     if email:
         url = f"{settings.FRONTEND_URL}{link}" if link else settings.FRONTEND_URL
         greeting = EMAIL_GREETING[lang].format(name=user.name)
-        queue_email(db, user.email, title, f"{greeting}\n\n{message}\n\n{url}\n\n— TPMS")
+        queue_email(db, user.email, title, f"{greeting}\n\n{message}\n\n{url}\n\n— UrbanPuls")
 
 def notify_role(db: Session, roles: list, type_: str, message_key: str, link: str | None = None, **params) -> None:
     for user in db.query(User).filter(User.role.in_(roles), User.is_active.is_(True)).all():

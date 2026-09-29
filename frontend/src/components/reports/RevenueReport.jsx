@@ -31,7 +31,7 @@ export default function RevenueReport() {
       const res = await api.get('/vendors/report', { params: { ...query(), format: fmt }, responseType: 'blob' })
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a')
-      a.href = url; a.download = `tpms_report_${params.period}_${params.start}_${params.end}.${fmt}`; a.click()
+      a.href = url; a.download = `urbanpuls_report_${params.period}_${params.start}_${params.end}.${fmt}`; a.click()
       URL.revokeObjectURL(url)
     } catch (e) { toast.error(errorMessage(e)) }
   }

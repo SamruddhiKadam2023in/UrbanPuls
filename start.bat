@@ -1,9 +1,9 @@
 @echo off
-echo Starting TPMS...
+echo Starting UrbanPuls...
 
-start "TPMS Backend" cmd /k "cd backend && venv\Scripts\activate && alembic upgrade head && uvicorn main:app --reload --port 8000"
+start "UrbanPuls Backend" cmd /k "cd backend && venv\Scripts\activate && alembic upgrade head && uvicorn main:app --reload --port 8000"
 timeout /t 3 >nul
-start "TPMS Frontend" cmd /k "cd frontend && npm run dev"
+start "UrbanPuls Frontend" cmd /k "cd frontend && npm run dev"
 
 echo.
 echo Backend:  http://localhost:8000

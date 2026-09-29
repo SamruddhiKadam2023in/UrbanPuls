@@ -1,6 +1,6 @@
 @echo off
 echo ================================================
-echo  TPMS - Traffic ^& Parking Management System
+echo  UrbanPuls - Traffic ^& Parking Management System
 echo  Windows development setup
 echo ================================================
 echo.
@@ -37,8 +37,8 @@ call npm install --silent
 cd ..
 
 echo.
-echo Setup complete. Double-click start.bat to run TPMS.
+echo Setup complete. Double-click start.bat to run UrbanPuls.
 echo Demo logins (development only):
-echo   admin@tpms.com / admin123    vendor@tpms.com / vendor123
-echo   user@tpms.com  / user123     police@tpms.com / police123
+echo   admin@urbanpuls.com / admin123    vendor@urbanpuls.com / vendor123
+echo   user@urbanpuls.com  / user123     police@urbanpuls.com / police123
 pause
