@@ -10,6 +10,7 @@ Available in **English, हिंदी and मराठी**.
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-85_passing-brightgreen)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 ---
 
@@ -297,4 +298,10 @@ python create_admin.py --email you@example.com --name "Your Name"
 
 ## License
 
-The bundled detection model (`backend/yolo/model.onnx`, YOLO11n) is © Ultralytics and released under the [AGPL-3.0 licence](https://github.com/ultralytics/ultralytics/blob/main/LICENSE).
+Copyright © 2026 Samruddhi Sanjay Kadam
+
+TPMS is free software: you can redistribute it and/or modify it under the terms of the **GNU Affero General Public License, version 3** (AGPL-3.0), as published by the Free Software Foundation. See [LICENSE](LICENSE) for the full text.
+
+In short: you may use, change and share this project, including commercially. If you distribute a modified version, or run one as a service that other people use over a network, you must make your complete source code available to them under the same licence.
+
+The bundled detection model (`backend/yolo/model.onnx`, YOLO11n) is © Ultralytics and is itself released under [AGPL-3.0](https://github.com/ultralytics/ultralytics/blob/main/LICENSE).
