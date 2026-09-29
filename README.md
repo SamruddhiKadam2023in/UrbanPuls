@@ -1,121 +1,275 @@
 # 🅿 TPMS — Traffic & Parking Management System
 
-Parking reservations with **pay at the gate**, a gate screen for Parking Partners with QR check-in, citizen complaints with reward points, traffic insights and emergency calling. Built for Mumbai.
+A full-stack web app for city parking, built for Mumbai. Drivers reserve car or two-wheeler parking and **pay at the gate** only for the time they actually park. Parking lot owners run their gates from a phone or tablet. Citizens report illegal parking, and a YOLO model finds vehicles standing in no-parking areas.
 
-## How parking works
+Available in **English, हिंदी and मराठी**.
 
-1. **Reserve.** The user picks a zone, a time window and a free slot. Nothing is paid online. The user gets a booking code and QR code.
-2. **Arrive.** Check-in opens 30 minutes before the start time. If the car hasn't arrived 15 minutes after the start time, the booking becomes a **no-show** and the slot is released.
-3. **Check in at the gate.** The Parking Partner scans the QR code, or types the code or vehicle number, on the **Gate** screen.
-4. **Check out and pay.** The fare is worked out from the actual time parked (minimum 1 hour, then 30-minute steps), minus any reward points the user chose to spend. The customer pays cash or scans the zone's UPI QR code. The Parking Partner records the payment and a PDF receipt is created.
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React_18-20232A?logo=react&logoColor=61DAFB)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-85_passing-brightgreen)
 
-Walk-in cars without a booking can be checked in straight from the Gate screen.
+---
 
-**Limits:** at most 2 active bookings per user. After 3 no-shows in 30 days, online booking is paused (walk-ins still work).
+## Contents
 
-## Roles
+- [Features](#features)
+- [Who uses it](#who-uses-it)
+- [Quick start (Docker)](#quick-start-docker)
+- [Running without Docker](#running-without-docker)
+- [Demo accounts](#demo-accounts)
+- [How it works](#how-it-works)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Configuration](#configuration)
+- [Development](#development)
+- [License](#license)
 
-Parking lot owners and operators are called **Parking Partners** in the app, and the people who act on complaints are **Field Officers**. In the code and database these roles are still named `vendor` and `police`.
+---
 
+## Features
 
-| Role | Can do | Pages |
-|------|--------|-------|
-| User | Reserve, extend and cancel bookings; rate visits; report complaints; earn points | Map, Bookings, Complaints, Notifications |
-| Parking Partner | Owns or runs parking lots. Everything a user can, plus manage their own lots and slots, check cars in and out, record payments, see reports. Sign-ups need admin approval | + Gate, Zones, Analytics, Dashboard |
-| Field Officer | Staff who act on verified complaints on the ground (your team, lot security, or traffic police if you partner with them). Resolve complaints on a map, download fines, use violation detection | + Enforcement, Detection |
-| Gate Attendant | Staff added by a Parking Partner on the Staff page. Can only use the Gate screen for that partner's lots | Gate only |
-| Admin | Everything: manage users and roles, approve Parking Partners, create staff accounts, verify complaints | + Admin |
+**Parking for drivers**
+- Live map of parking lots with free car and two-wheeler slots, prices, ratings and reviews
+- "Near me" sorting and one-tap directions (opens Google Maps)
+- Reserve a slot for a time window and get a QR code. Nothing is paid online
+- Pay at the gate in cash or UPI for the time actually parked; reward points give a discount
+- Extend or cancel bookings, download PDF receipts, rate visits
+- Reminders 30 minutes before a booking, and live notifications in the app and by email
 
-## Live updates and notifications
+**Running a parking lot (Parking Partners)**
+- **Gate screen**: scan the booking QR (or type the code / vehicle number), check cars in and out, handle walk-ins
+- Checkout works out the fee and shows a **UPI QR for the exact amount**, paid straight to the partner
+- Manage lots on a map: car and two-wheeler slots, separate rates, UPI details, switch slots off for repairs
+- **Gate staff accounts**: attendants who can only use the Gate screen
+- Home page with today's takings (cash / UPI), cars parked, arrivals due and occupancy per lot
+- Revenue reports by day, week or month, exported as CSV or PDF
 
-The browser keeps one WebSocket open (`/api/live/ws`). Through it:
-- users get notifications (booking confirmed, checked in, receipt, reminder 30 minutes before start, no-show, complaint updates)
-- maps, the Gate screen and the Zones page refresh when availability changes
-- Parking Partners, Field Officers and admins get violation alerts
+**Complaints and enforcement**
+- Citizens report illegal parking, road blockages, accidents and more, with GPS location and a photo
+- Admins verify or reject reports; verified reporters earn reward points and a fine PDF is generated
+- **Field Officers** get a map of verified complaints and mark them resolved; reporters see a status timeline
+- **Violation detection**: a YOLO11 model finds vehicles in a camera photo and flags those whose wheels are inside no-parking areas drawn on that camera's view
 
-Notifications are also stored (bell icon) and the important ones are emailed. They are written in each user's chosen language.
+**Platform**
+- Five roles, each with its own menu and home page (see below)
+- Live updates over a WebSocket: availability, notifications, violation alerts
+- Admin tools: user search, roles, partner approvals, staff accounts
+- Account security: email verification, password reset, rate limiting, "sign out everywhere" on password change
+- Privacy: download all your data, delete your account, consent recorded at sign-up
+- Traffic density charts and busiest / quietest hours per lot
+- Emergency page with one-tap calls to police (100), ambulance (108) and fire (101)
 
-Nobody can make themselves an admin at sign-up. Staff accounts are created by an admin (`POST /api/admin/users`), and the first admin with `create_admin.py`.
+## Who uses it
+
+| Role | Who they are | What they do | Their main screens |
+|------|--------------|--------------|--------------------|
+| 🚗 **Driver** | Any member of the public | Reserve parking, pay at the gate, report problems, earn points | Map, Bookings, Complaints |
+| 🏢 **Parking Partner** | Owner or operator of a parking lot (needs admin approval) | Run the gate, manage lots and prices, add gate staff, see revenue | Gate, Zones, Reports, Staff |
+| 🚧 **Gate Attendant** | Staff added by a Parking Partner | Check cars in and out and record payments for their employer's lots only | Gate |
+| 🦺 **Field Officer** | Staff who act on the ground (your team, lot security, or traffic police) | Resolve verified complaints, run violation detection | Enforcement, Detection, Cameras |
+| 🛡 **Admin** | The operator of TPMS | Verify complaints, approve partners, manage users and staff accounts | Dashboard, Admin |
+
+Staff roles can still park like drivers from the **"Park a car"** menu. Nobody can make themselves an admin or partner at sign-up.
+
+> In the code and database, Parking Partners are the `vendor` role and Field Officers the `police` role.
+
+## Quick start (Docker)
+
+Needs [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+git clone https://github.com/SamruddhiKadam2023in/traffic-parking-ps.git
+cd traffic-parking-ps
+cp backend/.env.example backend/.env        # Windows: copy backend\.env.example backend\.env
+docker compose up --build -d
+docker compose exec backend python seed.py  # demo accounts, 5 Mumbai lots, traffic data
+```
+
+Open **http://localhost:5173** and use the "Sign in as…" buttons on the sign-in page.
+
+This starts PostgreSQL, Redis, the FastAPI backend (migrations run automatically) and the React app behind nginx. Only port **5173** is published.
+
+```bash
+docker compose logs -f backend   # backend logs; emails are printed here until SMTP is configured
+docker compose down              # stop (data is kept in Docker volumes)
+```
+
+**Optional:** for a dark street map, get a free key from [MapTiler](https://cloud.maptiler.com) (allowed origin: `localhost`), put `VITE_MAPTILER_KEY=...` in a `.env` file next to `docker-compose.yml`, and run `docker compose up --build -d` again. Without a key the map uses OpenStreetMap tiles.
+
+## Running without Docker
+
+Needs Python 3.11+ and Node.js 20+. Uses SQLite, so no database server is needed.
+
+**Windows shortcut:** run `setup_windows.bat` once, then `start.bat`.
+
+**Manually:**
+
+```bash
+# Terminal 1: backend
+cd backend
+python -m venv venv
+venv\Scripts\activate                        # macOS/Linux: source venv/bin/activate
+pip install -r requirements-dev.txt
+copy .env.example .env                       # macOS/Linux: cp .env.example .env
+alembic upgrade head
+python seed.py
+uvicorn main:app --reload --port 8000
+
+# Terminal 2: frontend
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173**. API docs: **http://localhost:8000/docs**.
+
+If port 8000 is already taken, start the backend with `--port 8001` and the frontend with `VITE_API_TARGET=http://localhost:8001 npm run dev` (PowerShell: `$env:VITE_API_TARGET="http://localhost:8001"; npm run dev`).
+
+## Demo accounts
+
+Created by `seed.py` (never in production). The sign-in page has one-click buttons for them.
+
+| Role | Email | Password |
+|------|-------|----------|
+| Driver | user@tpms.com | user123 |
+| Parking Partner | vendor@tpms.com | vendor123 |
+| Gate Attendant (works for the demo partner) | gate@tpms.com | gate12345 |
+| Field Officer | police@tpms.com | police123 |
+| Admin | admin@tpms.com | admin123 |
+
+A good first test: sign in as the driver in one window and the Parking Partner in a private window. Reserve a slot as the driver, then check it in on the partner's Gate screen; the driver's page updates live.
+
+## How it works
+
+### Architecture
+
+```mermaid
+flowchart LR
+    B["Browser<br/>React + Redux"] -->|"HTTP /api + WebSocket /api/live/ws"| N[nginx]
+    N --> A["FastAPI backend"]
+    A --> P[("PostgreSQL")]
+    A --> R[("Redis<br/>rate limits")]
+    A --> Y["YOLO11n model<br/>(OpenCV, CPU)"]
+    A --> F["Uploads, receipts,<br/>fines (volume)"]
+    B -. map tiles .-> M["MapTiler /<br/>OpenStreetMap"]
+```
+
+### A booking from start to finish
+
+```mermaid
+sequenceDiagram
+    actor D as Driver
+    participant T as TPMS
+    actor P as Parking Partner / Gate Attendant
+    D->>T: Reserve slot for a time window
+    T-->>D: Booking code + QR (nothing paid)
+    T-->>D: Reminder 30 min before start
+    D->>P: Arrives, shows QR
+    P->>T: Scan → Check in
+    T-->>D: "Checked in" notification
+    D->>P: Leaves
+    P->>T: Check out (fee for actual time, minus points)
+    P-->>D: Collects cash or UPI (QR for the exact amount)
+    T-->>D: Receipt PDF + "Thanks for parking"
+```
+
+### Booking rules
+
+| Rule | Value |
+|------|-------|
+| Billing | Actual time parked, minimum 1 hour, then 30-minute steps, at the rate locked in when booking |
+| Check-in window | Opens 30 minutes before the start time |
+| No-show | Not checked in 15 minutes after the start time → slot released |
+| Active bookings | At most 2 per driver |
+| Repeated no-shows | 3 in 30 days pauses online booking (walk-ins still work) |
+| Reward points | 10 per verified complaint; 1 point = ₹0.50 off parking |
+
+If the booked slot is still occupied when a driver arrives (the previous car overstayed), check-in moves them to another free slot of the same vehicle type.
+
+### Violation detection
+
+`backend/yolo/model.onnx` is the pre-trained **YOLO11n** model, run on the CPU through OpenCV, so no GPU or PyTorch is needed at runtime. It finds cars, two-wheelers, buses, trucks and bicycles.
+
+A vehicle in a photo is not illegal by itself; it depends on *where* it stands. So staff add a **camera** (a reference photo of one view) and draw its **no-parking areas** on it. When a photo from that camera is checked, a vehicle whose ground point (the bottom-centre of its box) falls inside an area is a violation, and a live alert goes to staff.
+
+To re-create the model or train your own on labelled photos, see `backend/yolo/train_yolo.py`.
+
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, Vite, Redux Toolkit, React Router, Leaflet, Recharts, i18next, react-hot-toast, qrcode.react, html5-qrcode |
+| Backend | FastAPI, SQLAlchemy 2, Alembic, Pydantic 2, PyJWT, bcrypt, slowapi, ReportLab (PDFs) |
+| Database | PostgreSQL 16 (Docker) or SQLite (local development) |
+| Cache | Redis 7 (rate-limit counters) |
+| Detection | YOLO11n (Ultralytics) exported to ONNX, OpenCV DNN |
+| Serving | nginx (static app + reverse proxy for the API and WebSocket), Docker Compose |
+| Testing | pytest (85 tests, run on SQLite and PostgreSQL) |
 
 ## Project structure
 
 ```
 traffic-parking-ps/
 ├── backend/
-│   ├── core/          config, database, security (JWT), rate limiting, time helpers
-│   ├── models/        SQLAlchemy models
-│   ├── routes/        auth, admin, zones, bookings, gate, complaints, detection, traffic, vendors, alerts
-│   ├── services/      booking rules, email, file storage, PDFs, SMS
-│   ├── migrations/    Alembic database migrations
-│   ├── tests/         pytest suite
-│   ├── yolo/          detector + training script
-│   ├── seed.py        demo data (development only)
-│   └── create_admin.py
-├── frontend/          React + Vite + Redux
-└── docker-compose.yml PostgreSQL, Redis, backend, nginx frontend
+│   ├── core/            settings, database, security (JWT, roles), rate limiting, time helpers
+│   ├── models/          users, lots and slots, bookings, complaints, notifications, ratings, cameras
+│   ├── routes/          auth, admin, zones, bookings, gate, vendors (partner tools),
+│   │                    complaints, detection, traffic, notifications, live (WebSocket), alerts
+│   ├── services/        booking rules, live events, notifications + translated messages,
+│   │                    email, file storage, PDFs, violation geometry, SMS
+│   ├── migrations/      Alembic database migrations
+│   ├── yolo/            detector, model.onnx, labels, training/export script
+│   ├── tests/           pytest suite
+│   ├── seed.py          demo data (refuses to run in production)
+│   └── create_admin.py  create the first real administrator
+├── frontend/
+│   ├── src/pages/       one file per screen
+│   ├── src/components/  booking, gate, home pages per role, detection overlay, shared UI
+│   ├── src/store/       Redux slices
+│   ├── src/locales/     en.json, hi.json, mr.json
+│   ├── scripts/         translation checker
+│   └── nginx.conf       serving + API/WebSocket proxy
+├── docker-compose.yml
+├── setup_windows.bat    one-time local setup (Windows)
+└── start.bat            start backend + frontend locally (Windows)
 ```
 
-## Local development (Windows)
+## Configuration
 
-Needs Python 3.11+ and Node.js 20+.
+Backend settings are environment variables in `backend/.env`; see `backend/.env.example` for all of them. The defaults work for local use. Useful ones:
 
-```
-setup_windows.bat     (installs everything, creates the database, loads demo data)
-start.bat             (starts backend and frontend, opens http://localhost:5173)
-```
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DATABASE_URL` | `sqlite:///./tpms.db` | Database (Docker sets PostgreSQL automatically) |
+| `SECRET_KEY` | placeholder | Signs login tokens; use a long random value outside development |
+| `SMTP_HOST`, `SMTP_*` | empty | Send real emails; when empty, emails are printed in the backend log |
+| `BOOKING_GRACE_MINUTES` | 15 | Minutes after the start time before a no-show |
+| `MAX_ACTIVE_RESERVATIONS` | 2 | Active bookings per driver |
+| `NO_SHOW_LIMIT` | 3 | No-shows in 30 days before booking is paused |
+| `CLOUDINARY_*` | empty | Store photos in Cloudinary instead of local disk |
 
-Manual steps:
+Frontend build settings (in `frontend/.env.local` for `npm run dev`, or a `.env` next to `docker-compose.yml` for Docker; see the `.env.example` files):
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_MAPTILER_KEY` | Dark MapTiler map; OpenStreetMap is used without it |
+| `VITE_OPERATOR_NAME`, `VITE_CONTACT_EMAIL`, `VITE_CITY` | Shown on the landing, privacy and terms pages |
+| `VITE_API_TARGET` | Backend address for `npm run dev` (default `http://localhost:8000`) |
+
+## Development
+
+**Tests**
 
 ```bash
 cd backend
-python -m venv venv && venv\Scripts\activate
-pip install -r requirements-dev.txt
-copy .env.example .env
-alembic upgrade head
-python seed.py
-uvicorn main:app --reload --port 8000
-
-cd frontend
-npm install
-npm run dev
+pytest                                   # SQLite
+TEST_DATABASE_URL=postgresql://... pytest   # PostgreSQL
 ```
 
-Development uses SQLite by default. Emails (verification and password reset links) are printed in the backend console until `SMTP_HOST` is set.
-
-**Demo logins** (development only, created by `seed.py`):
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@tpms.com | admin123 |
-| Parking Partner | vendor@tpms.com | vendor123 |
-| User | user@tpms.com | user123 |
-| Field Officer | police@tpms.com | police123 |
-| Gate Attendant (works for the demo partner) | gate@tpms.com | gate12345 |
-
-## Languages
-
-The app is available in English, Hindi and Marathi. Text lives in `frontend/src/locales/*.json`; the English wording is written in the code as `t('key', 'English text')`.
-
-```bash
-cd frontend
-npm run i18n:sync     # after changing text in the code: updates en.json
-npm run i18n:check    # fails if Hindi or Marathi is missing a key or a {{placeholder}}
-```
-
-Server notifications and emails are in `backend/services/messages.py`.
-
-## Tests
-
-```bash
-cd backend
-pytest
-```
-
-To run them against PostgreSQL, set `TEST_DATABASE_URL=postgresql://...` first.
-
-## Database changes
-
-The schema is managed with Alembic. After changing a model:
+**Database changes** are managed with Alembic. After changing a model:
 
 ```bash
 alembic revision --autogenerate -m "describe the change"
@@ -124,41 +278,23 @@ alembic upgrade head
 
 `tests/test_migrations.py` fails if a model changes without a migration.
 
-## Configuration
-
-All settings are environment variables. See `backend/.env.example` for the full list. The important ones:
-
-| Variable | Purpose |
-|----------|---------|
-| `ENVIRONMENT` | `production` enforces a strong `SECRET_KEY` and PostgreSQL, hides API docs and disables demo detections |
-| `DATABASE_URL` | `postgresql://user:pass@host:5432/db` in production |
-| `SECRET_KEY` | Random string of at least 32 characters |
-| `FRONTEND_URL`, `CORS_ORIGINS` | Public site address, used in email links and CORS |
-| `SMTP_*` | Email delivery for verification and password reset |
-| `RATE_LIMIT_STORAGE_URI` | `redis://...` when running several workers |
-| `BOOKING_GRACE_MINUTES`, `MAX_ACTIVE_RESERVATIONS`, `NO_SHOW_LIMIT` | Booking rules |
-| `CLOUDINARY_*` | Optional cloud storage for complaint photos (local disk otherwise) |
-| `TWILIO_*` | Optional SMS to police (skipped when empty) |
-
-Each parking zone can have a `upi_id` (e.g. `parking@okicici`). At checkout the Gate screen shows a UPI QR code for the exact amount, which pays the Parking Partner directly.
-
-## Docker
+**Translations.** English text is written in the code as `t('key', 'English text')`; Hindi and Marathi live in `frontend/src/locales/`.
 
 ```bash
-docker compose up --build
-docker compose exec backend python create_admin.py --email you@example.com --name "Your Name"
+cd frontend
+npm run i18n:sync    # update en.json from the code
+npm run i18n:check   # fails if Hindi or Marathi misses a key or a {{placeholder}}
 ```
 
-Opens at http://localhost:5173. Migrations run automatically when the backend starts.
+Server notifications and emails are translated in `backend/services/messages.py`.
 
-## Violation detection (YOLO)
+**Creating a real admin** (instead of the demo one):
 
-`backend/yolo/model.onnx` is the pre-trained **YOLO11n** model (runs on the CPU through OpenCV). It finds cars, two-wheelers, buses, trucks and bicycles in a photo.
+```bash
+python create_admin.py --email you@example.com --name "Your Name"
+# Docker: docker compose exec backend python create_admin.py --email ... --name "..."
+```
 
-Whether a vehicle is parked *illegally* depends on where it stands, so staff first add a **camera** (Detection → Cameras) with a reference photo and draw its **no-parking areas**. When a photo from that camera is checked, any vehicle whose wheels (the bottom-centre of its box) are inside an area is a violation, and a live alert goes to staff.
+## License
 
-To rebuild the model or train your own, see `backend/yolo/train_yolo.py`. YOLO11 is released by Ultralytics under the AGPL-3.0 licence.
-
-## API docs
-
-http://localhost:8000/docs (not available when `ENVIRONMENT=production`).
+The bundled detection model (`backend/yolo/model.onnx`, YOLO11n) is © Ultralytics and released under the [AGPL-3.0 licence](https://github.com/ultralytics/ultralytics/blob/main/LICENSE).
