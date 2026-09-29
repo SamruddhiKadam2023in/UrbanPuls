@@ -14,8 +14,6 @@ Available in **English, हिंदी and मराठी**.
 
 ---
 
----
-
 ## Features
 
 **Parking for drivers**
