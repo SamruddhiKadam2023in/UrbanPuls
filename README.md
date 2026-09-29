@@ -1,4 +1,4 @@
-# 🅿 UrbanPuls — Traffic & Parking Management System
+# 🅿 UrbanPuls : Traffic & Parking Management System
 
 A full-stack web app for city parking, built for Mumbai. Drivers reserve car or two-wheeler parking and **pay at the gate** only for the time they actually park. Parking lot owners run their gates from a phone or tablet. Citizens report illegal parking, and a YOLO model finds vehicles standing in no-parking areas.
 
@@ -13,20 +13,6 @@ Available in **English, हिंदी and मराठी**.
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 ---
-
-## Contents
-
-- [Features](#features)
-- [Who uses it](#who-uses-it)
-- [Quick start (Docker)](#quick-start-docker)
-- [Running without Docker](#running-without-docker)
-- [Demo accounts](#demo-accounts)
-- [How it works](#how-it-works)
-- [Tech stack](#tech-stack)
-- [Project structure](#project-structure)
-- [Configuration](#configuration)
-- [Development](#development)
-- [License](#license)
 
 ---
 
