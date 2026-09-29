@@ -26,6 +26,7 @@ class SlotOut(BaseModel):
     is_occupied: bool
     is_active: bool
     is_available_now: bool = True
+    vehicle_type: str = "four_wheeler"
 
 class ZoneOut(BaseModel):
     id: int
@@ -35,7 +36,11 @@ class ZoneOut(BaseModel):
     longitude: float
     total_slots: int
     price_per_hour: float
+    two_wheeler_price_per_hour: Optional[float] = None
     available_slots: int
+    # Per vehicle type: {"four_wheeler": n, "two_wheeler": n}
+    available_by_type: dict[str, int] = {}
+    slots_by_type: dict[str, int] = {}
     is_active: bool
     vendor_id: Optional[int] = None
     upi_id: Optional[str] = None
@@ -53,6 +58,7 @@ class BookingOut(BaseModel):
     slot_id: int
     slot_number: str
     vehicle_number: str
+    vehicle_type: str = "four_wheeler"
     customer_name: Optional[str]
     is_walk_in: bool
     status: str
@@ -76,7 +82,7 @@ def booking_out(b: Booking) -> BookingOut:
         id=b.id, booking_code=b.booking_code,
         zone_id=b.zone_id, zone_name=b.zone.name, zone_address=b.zone.address,
         slot_id=b.slot_id, slot_number=b.slot.slot_number,
-        vehicle_number=b.vehicle_number,
+        vehicle_number=b.vehicle_number, vehicle_type=b.vehicle_type.value,
         customer_name=b.user.name if b.user else None,
         is_walk_in=b.is_walk_in, status=b.status.value,
         start_time=b.start_time, end_time=b.end_time,

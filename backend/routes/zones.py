@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
@@ -8,7 +8,7 @@ from core.database import get_db
 from core.security import require_roles, get_current_user
 from core.timeutil import to_utc
 from models.activity import Rating
-from models.parking import ParkingZone, ParkingSlot
+from models.parking import ParkingZone, ParkingSlot, VehicleType, SLOT_PREFIX
 from models.user import User, UserRole
 from schemas import ZoneOut, SlotOut
 from services import booking_service as bs
@@ -24,11 +24,19 @@ class ZoneCreate(BaseModel):
     address: str = Field(min_length=1, max_length=200)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    total_slots: int = Field(ge=1, le=2000)
+    total_slots: int = Field(ge=0, le=2000)                 # car slots
+    two_wheeler_slots: int = Field(default=0, ge=0, le=2000)
     price_per_hour: float = Field(default=20.0, gt=0, le=10000)
+    two_wheeler_price_per_hour: Optional[float] = Field(default=None, gt=0, le=10000)
     upi_id: Optional[str] = Field(default=None, pattern=UPI_ID_PATTERN)
     upi_name: Optional[str] = Field(default=None, max_length=100)
     vendor_id: Optional[int] = None   # admins only; vendors always own the zones they create
+
+    @model_validator(mode="after")
+    def _has_slots(self):
+        if self.total_slots + self.two_wheeler_slots < 1:
+            raise ValueError("Add at least one slot")
+        return self
 
 class ZoneUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
@@ -36,12 +44,14 @@ class ZoneUpdate(BaseModel):
     latitude: Optional[float] = Field(default=None, ge=-90, le=90)
     longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     price_per_hour: Optional[float] = Field(default=None, gt=0, le=10000)
+    two_wheeler_price_per_hour: Optional[float] = Field(default=None, gt=0, le=10000)
     upi_id: Optional[str] = Field(default=None, pattern=UPI_ID_PATTERN)
     upi_name: Optional[str] = Field(default=None, max_length=100)
     is_active: Optional[bool] = None
 
 class SlotsAdd(BaseModel):
     count: int = Field(ge=1, le=500)
+    vehicle_type: VehicleType = VehicleType.four_wheeler
 
 class SlotUpdate(BaseModel):
     is_active: Optional[bool] = None
@@ -60,12 +70,22 @@ def zone_out(zone: ParkingZone, available: int, held: set[int], with_slots: bool
     slots = []
     if with_slots:
         slots = [SlotOut(id=s.id, slot_number=s.slot_number, is_occupied=s.is_occupied, is_active=s.is_active,
-                         is_available_now=s.is_active and not s.is_occupied and s.id not in held)
+                         is_available_now=s.is_active and not s.is_occupied and s.id not in held,
+                         vehicle_type=s.vehicle_type.value)
                  for s in zone.slots]
+    by_type_total: dict[str, int] = {}
+    by_type_free: dict[str, int] = {}
+    for s in zone.slots:
+        if s.is_active:
+            vt = s.vehicle_type.value
+            by_type_total[vt] = by_type_total.get(vt, 0) + 1
+            if not s.is_occupied and s.id not in held:
+                by_type_free[vt] = by_type_free.get(vt, 0) + 1
     avg, count = (ratings or {}).get(zone.id, (None, 0))
     return ZoneOut(id=zone.id, name=zone.name, address=zone.address, latitude=zone.latitude,
                    longitude=zone.longitude, total_slots=sum(1 for s in zone.slots if s.is_active),
-                   price_per_hour=zone.price_per_hour, available_slots=available,
+                   price_per_hour=zone.price_per_hour, two_wheeler_price_per_hour=zone.two_wheeler_price_per_hour,
+                   available_slots=available, available_by_type=by_type_free, slots_by_type=by_type_total,
                    is_active=zone.is_active, vendor_id=zone.vendor_id,
                    upi_id=zone.upi_id if private else None, upi_name=zone.upi_name if private else None,
                    avg_rating=avg, rating_count=count, slots=slots)
@@ -78,14 +98,17 @@ def get_owned_zone(db: Session, zone_id: int, user: User) -> ParkingZone:
         raise HTTPException(status_code=403, detail="This zone belongs to another Parking Partner")
     return zone
 
-def _add_slots(db: Session, zone: ParkingZone, count: int) -> None:
+def _add_slots(db: Session, zone: ParkingZone, count: int,
+               vehicle_type: VehicleType = VehicleType.four_wheeler) -> None:
+    # Car slots are S001, S002...; two-wheeler slots B001, B002...
     existing = {s.slot_number for s in zone.slots}
+    prefix = SLOT_PREFIX[vehicle_type]
     n = 1
     added = 0
     while added < count:
-        number = f"S{n:03d}"
+        number = f"{prefix}{n:03d}"
         if number not in existing:
-            db.add(ParkingSlot(zone_id=zone.id, slot_number=number))
+            db.add(ParkingSlot(zone_id=zone.id, slot_number=number, vehicle_type=vehicle_type))
             added += 1
         n += 1
 
@@ -122,7 +145,8 @@ def zone_ratings(zone_id: int, db: Session = Depends(get_db)):
              "by": r.user.name.split()[0] if r.user else None} for r in rows]
 
 @router.get("/{zone_id}/availability")
-def get_availability(zone_id: int, start: AwareDatetime, end: AwareDatetime, db: Session = Depends(get_db)):
+def get_availability(zone_id: int, start: AwareDatetime, end: AwareDatetime,
+                     vehicle_type: VehicleType = VehicleType.four_wheeler, db: Session = Depends(get_db)):
     """Slots that are free for the whole of [start, end), plus the estimated fare."""
     zone = db.get(ParkingZone, zone_id)
     if not zone or not zone.is_active:
@@ -130,14 +154,16 @@ def get_availability(zone_id: int, start: AwareDatetime, end: AwareDatetime, db:
     start, end = to_utc(start), to_utc(end)
     if end <= start:
         raise HTTPException(status_code=400, detail="End time must be after start time")
-    free = bs.free_slots(db, zone_id, start, end)
-    billed, fare = bs.fare_for(start, end, zone.price_per_hour)
+    free = bs.free_slots(db, zone_id, start, end, vehicle_type)
+    rate = zone.price_for(vehicle_type)
+    billed, fare = bs.fare_for(start, end, rate)
     return {
         "zone_id": zone_id,
+        "vehicle_type": vehicle_type.value,
         "slots": [{"id": s.id, "slot_number": s.slot_number} for s in free],
         "billed_minutes": billed,
         "estimated_amount": fare,
-        "price_per_hour": zone.price_per_hour,
+        "price_per_hour": rate,
     }
 
 @router.get("/{zone_id}/slots", response_model=list[SlotOut])
@@ -145,7 +171,8 @@ def get_slots(zone_id: int, db: Session = Depends(get_db)):
     held = bs.held_slot_ids_now(db, [zone_id])
     slots = db.query(ParkingSlot).filter(ParkingSlot.zone_id == zone_id).order_by(ParkingSlot.id).all()
     return [SlotOut(id=s.id, slot_number=s.slot_number, is_occupied=s.is_occupied, is_active=s.is_active,
-                    is_available_now=s.is_active and not s.is_occupied and s.id not in held) for s in slots]
+                    is_available_now=s.is_active and not s.is_occupied and s.id not in held,
+                    vehicle_type=s.vehicle_type.value) for s in slots]
 
 # ── Vendor / admin management ─────────────────────────────────────────────────
 @router.post("/", status_code=201)
@@ -156,10 +183,14 @@ def create_zone(data: ZoneCreate, db: Session = Depends(get_db), user: User = De
         if not vendor or vendor.role != UserRole.vendor:
             raise HTTPException(status_code=400, detail="vendor_id must belong to a Parking Partner account")
         vendor_id = vendor.id
-    zone = ParkingZone(**data.model_dump(exclude={"vendor_id", "total_slots"}), vendor_id=vendor_id, total_slots=0)
+    zone = ParkingZone(**data.model_dump(exclude={"vendor_id", "total_slots", "two_wheeler_slots"}),
+                       vendor_id=vendor_id, total_slots=0)
     db.add(zone)
     db.flush()
-    _add_slots(db, zone, data.total_slots)
+    if data.total_slots:
+        _add_slots(db, zone, data.total_slots, VehicleType.four_wheeler)
+    if data.two_wheeler_slots:
+        _add_slots(db, zone, data.two_wheeler_slots, VehicleType.two_wheeler)
     _sync_total(db, zone)
     zone_changed(db, zone.id)
     db.commit()
@@ -177,7 +208,7 @@ def update_zone(zone_id: int, data: ZoneUpdate, db: Session = Depends(get_db), u
 @router.post("/{zone_id}/slots", status_code=201)
 def add_slots(zone_id: int, data: SlotsAdd, db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
     zone = get_owned_zone(db, zone_id, user)
-    _add_slots(db, zone, data.count)
+    _add_slots(db, zone, data.count, data.vehicle_type)
     _sync_total(db, zone)
     zone_changed(db, zone.id)
     db.commit()

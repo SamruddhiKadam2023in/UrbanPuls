@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.timeutil import utcnow, fmt_local
 from models.booking import Booking, BookingStatus
-from models.parking import ParkingSlot
+from models.parking import ParkingSlot, VehicleType
 
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   # no 0/O/1/I to avoid misreading at the gate
 
@@ -65,11 +65,14 @@ def slot_is_free(db: Session, slot: ParkingSlot, start: datetime, end: datetime,
         q = q.filter(Booking.id != exclude_booking_id)
     return q.first() is None
 
-def free_slots(db: Session, zone_id: int, start: datetime, end: datetime) -> list[ParkingSlot]:
+def free_slots(db: Session, zone_id: int, start: datetime, end: datetime,
+               vehicle_type: VehicleType | None = None) -> list[ParkingSlot]:
     busy = db.query(Booking.slot_id).filter(Booking.zone_id == zone_id, conflict_filter(start, end))
     q = db.query(ParkingSlot).filter(ParkingSlot.zone_id == zone_id,
                                      ParkingSlot.is_active.is_(True),
                                      ParkingSlot.id.not_in(busy))
+    if vehicle_type is not None:
+        q = q.filter(ParkingSlot.vehicle_type == vehicle_type)
     if _starts_now(start):
         q = q.filter(ParkingSlot.is_occupied.is_(False))
     return q.order_by(ParkingSlot.id).all()
@@ -82,6 +85,20 @@ def held_slot_ids_now(db: Session, zone_ids: list[int] | None = None) -> set[int
     if zone_ids is not None:
         q = q.filter(Booking.zone_id.in_(zone_ids))
     return {row[0] for row in q.all()}
+
+def available_now_by_type(db: Session, zone_ids: list[int]) -> dict[int, dict[str, int]]:
+    held = held_slot_ids_now(db, zone_ids)
+    q = db.query(ParkingSlot.zone_id, ParkingSlot.vehicle_type, func.count(ParkingSlot.id)).filter(
+        ParkingSlot.zone_id.in_(zone_ids),
+        ParkingSlot.is_active.is_(True),
+        ParkingSlot.is_occupied.is_(False),
+    )
+    if held:
+        q = q.filter(ParkingSlot.id.not_in(held))
+    out: dict[int, dict[str, int]] = {}
+    for zone_id, vt, n in q.group_by(ParkingSlot.zone_id, ParkingSlot.vehicle_type).all():
+        out.setdefault(zone_id, {})[vt.value] = n
+    return out
 
 def available_now_counts(db: Session, zone_ids: list[int]) -> dict[int, int]:
     held = held_slot_ids_now(db, zone_ids)

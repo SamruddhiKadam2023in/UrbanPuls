@@ -65,6 +65,7 @@ function ZoneForm({ zone, onClose, onSaved }) {
   const [form, setForm] = useState({
     name: zone?.name || '', address: zone?.address || '',
     price_per_hour: zone?.price_per_hour ?? 20, total_slots: 20,
+    two_wheeler_price_per_hour: zone?.two_wheeler_price_per_hour ?? '', two_wheeler_slots: 0,
     upi_id: zone?.upi_id || '', upi_name: zone?.upi_name || '',
   })
   const [loc, setLoc] = useState(zone ? [zone.latitude, zone.longitude] : null)
@@ -78,12 +79,13 @@ function ZoneForm({ zone, onClose, onSaved }) {
     const body = {
       name: form.name.trim(), address: form.address.trim(), latitude: loc[0], longitude: loc[1],
       price_per_hour: Number(form.price_per_hour),
+      two_wheeler_price_per_hour: form.two_wheeler_price_per_hour === '' ? null : Number(form.two_wheeler_price_per_hour),
       upi_id: form.upi_id.trim() || null, upi_name: form.upi_name.trim() || null,
     }
     setSaving(true)
     try {
       if (zone) await api.patch(`/zones/${zone.id}`, body)
-      else await api.post('/zones/', { ...body, total_slots: Number(form.total_slots) })
+      else await api.post('/zones/', { ...body, total_slots: Number(form.total_slots), two_wheeler_slots: Number(form.two_wheeler_slots) })
       toast.success(zone ? t('zones.saved', 'Zone updated') : t('zones.created', 'Zone created'))
       onSaved(); onClose()
     } catch (err) { toast.error(errorMessage(err)) }
@@ -97,8 +99,10 @@ function ZoneForm({ zone, onClose, onSaved }) {
           <div><label className="label">{t('zones.name', 'Zone name')}</label><input className="input" required maxLength={100} value={form.name} onChange={set('name')} /></div>
           <div><label className="label">{t('zones.address', 'Address')}</label><input className="input" required maxLength={200} value={form.address} onChange={set('address')} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div><label className="label">{t('zones.price', 'Price / hour (₹)')}</label><input className="input" type="number" min="1" step="0.5" required value={form.price_per_hour} onChange={set('price_per_hour')} /></div>
-            {!zone && <div><label className="label">{t('zones.slots', 'Number of slots')}</label><input className="input" type="number" min="1" max="2000" required value={form.total_slots} onChange={set('total_slots')} /></div>}
+            <div><label className="label">🚗 {t('zones.car_price', 'Car rate / hour (₹)')}</label><input className="input" type="number" min="1" step="0.5" required value={form.price_per_hour} onChange={set('price_per_hour')} /></div>
+            {!zone && <div><label className="label">🚗 {t('zones.car_slots', 'Car slots')}</label><input className="input" type="number" min="0" max="2000" required value={form.total_slots} onChange={set('total_slots')} /></div>}
+            <div><label className="label">🏍 {t('zones.bike_price', 'Two-wheeler rate / hour (₹)')}</label><input className="input" type="number" min="1" step="0.5" placeholder={t('zones.bike_price_ph', 'Same as car')} value={form.two_wheeler_price_per_hour} onChange={set('two_wheeler_price_per_hour')} /></div>
+            {!zone && <div><label className="label">🏍 {t('zones.bike_slots', 'Two-wheeler slots')}</label><input className="input" type="number" min="0" max="2000" required value={form.two_wheeler_slots} onChange={set('two_wheeler_slots')} /></div>}
           </div>
           <div><label className="label">{t('zones.upi_id', 'UPI ID for payments')}</label><input className="input" placeholder="parking@okicici" value={form.upi_id} onChange={set('upi_id')} /></div>
           <div><label className="label">{t('zones.upi_name', 'Payee name (shown in UPI apps)')}</label><input className="input" maxLength={100} value={form.upi_name} onChange={set('upi_name')} /></div>
@@ -117,6 +121,7 @@ function ZoneForm({ zone, onClose, onSaved }) {
 function SlotManager({ zone, onClose, onChanged }) {
   const { t } = useTranslation()
   const [count, setCount] = useState(5)
+  const [addType, setAddType] = useState('four_wheeler')
   const [busy, setBusy] = useState(false)
 
   const toggle = async (slot) => {
@@ -132,7 +137,7 @@ function SlotManager({ zone, onClose, onChanged }) {
   }
   const add = async () => {
     setBusy(true)
-    try { await api.post(`/zones/${zone.id}/slots`, { count: Number(count) }); toast.success(t('zones.slots_added', 'Slots added')); onChanged() }
+    try { await api.post(`/zones/${zone.id}/slots`, { count: Number(count), vehicle_type: addType }); toast.success(t('zones.slots_added', 'Slots added')); onChanged() }
     catch (e) { toast.error(errorMessage(e)) }
     finally { setBusy(false) }
   }
@@ -165,6 +170,10 @@ function SlotManager({ zone, onClose, onChanged }) {
       </div>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <input className="input" type="number" min="1" max="500" value={count} onChange={e => setCount(e.target.value)} style={{ width: '90px' }} />
+        <select className="input" style={{ width: 'auto' }} value={addType} onChange={e => setAddType(e.target.value)}>
+          <option value="four_wheeler">🚗 {t('vehicle.four_wheeler', 'Car')}</option>
+          <option value="two_wheeler">🏍 {t('vehicle.two_wheeler', 'Two-wheeler')}</option>
+        </select>
         <button className="btn btn-primary" disabled={busy} onClick={add}>+ {t('zones.add_slots', 'Add slots')}</button>
       </div>
     </Modal>
@@ -240,7 +249,8 @@ export default function Zones() {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--c-text2)', marginBottom: '14px', flexWrap: 'wrap' }}>
-                <span>{rupees(z.price_per_hour)}/hr</span>
+                <span>🚗 {z.slots_by_type?.four_wheeler || 0} · {rupees(z.price_per_hour)}/hr</span>
+                {(z.slots_by_type?.two_wheeler || 0) > 0 && <span>🏍 {z.slots_by_type.two_wheeler} · {rupees(z.two_wheeler_price_per_hour || z.price_per_hour)}/hr</span>}
                 <span>{z.upi_id ? `UPI: ${z.upi_id}` : <span style={{ color: '#ffd166' }}>{t('zones.no_upi', 'No UPI ID (cash only)')}</span>}</span>
                 {z.avg_rating && <span style={{ color: '#ffd166' }}>★ {z.avg_rating} ({z.rating_count})</span>}
               </div>

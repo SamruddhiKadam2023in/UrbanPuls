@@ -19,7 +19,7 @@ from core.database import SessionLocal
 from core.security import hash_password
 from core.timeutil import utcnow, LOCAL_TZ
 from models.booking import TrafficData
-from models.parking import ParkingZone, ParkingSlot
+from models.parking import ParkingZone, ParkingSlot, VehicleType
 from models.user import User, UserRole
 
 if settings.is_production:
@@ -33,8 +33,10 @@ DEMO_USERS = [
     ("Field Officer", "police@tpms.com", "police123", UserRole.police, 0),
 ]
 
+TWO_WHEELER_SLOTS, TWO_WHEELER_PRICE = 15, 10.0
+
 ZONES = [
-    # name, address, lat, lng, slots, price per hour
+    # name, address, lat, lng, car slots, car price per hour
     ("Dadar West Parking",   "Dadar West, Mumbai",   19.0176, 72.8437, 30, 25.0),
     ("Bandra Kurla Complex", "BKC, Mumbai",          19.0596, 72.8650, 50, 40.0),
     ("Andheri Station Lot",  "Andheri East, Mumbai", 19.1136, 72.8697, 40, 20.0),
@@ -66,11 +68,13 @@ def main():
         if not zone:
             zone = ParkingZone(name=name, address=addr, latitude=lat, longitude=lng, total_slots=slots,
                                price_per_hour=price, vendor_id=vendor.id,
-                               upi_id="tpms.demo@upi", upi_name=name)
+                               upi_id="tpms.demo@upi", upi_name=name, two_wheeler_price_per_hour=TWO_WHEELER_PRICE)
             db.add(zone)
             db.flush()
             for i in range(1, slots + 1):
                 db.add(ParkingSlot(zone_id=zone.id, slot_number=f"S{i:03d}"))
+            for i in range(1, TWO_WHEELER_SLOTS + 1):
+                db.add(ParkingSlot(zone_id=zone.id, slot_number=f"B{i:03d}", vehicle_type=VehicleType.two_wheeler))
             print(f"Created zone  {name} ({slots} slots)")
         zone_ids.append(zone.id)
 

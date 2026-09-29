@@ -546,6 +546,11 @@
     "no_show": "No-show",
     "reserved": "Reserved"
   },
+  "vehicle": {
+    "four_wheeler": "Car",
+    "two_wheeler": "Two-wheeler",
+    "type": "Vehicle type"
+  },
   "verify": {
     "banner": "Please verify your email address to book parking and report issues.",
     "resend": "Resend email",
@@ -569,6 +574,11 @@
     "add_slots": "Add slots",
     "address": "Address",
     "bad_upi": "UPI ID looks wrong, e.g. parking@okicici",
+    "bike_price": "Two-wheeler rate / hour (₹)",
+    "bike_price_ph": "Same as car",
+    "bike_slots": "Two-wheeler slots",
+    "car_price": "Car rate / hour (₹)",
+    "car_slots": "Car slots",
     "clear_confirm": "Mark {{slot}} as empty? Only do this if no car is parked there.",
     "click_map": "Click the map at the parking entrance",
     "created": "Zone created",
@@ -588,12 +598,10 @@
     "no_upi": "No UPI ID (cash only)",
     "none": "No zones yet. Add your first parking zone.",
     "parked": "Parked",
-    "price": "Price / hour (₹)",
     "reserved": "Reserved now",
     "reserved_short": "reserved",
     "saved": "Zone updated",
     "show": "Show",
-    "slots": "Number of slots",
     "slots_added": "Slots added",
     "slots_hint": "Tap a slot to take it out of use (e.g. repairs) or bring it back. Disabled slots cannot be booked.",
     "subtitle": "Live occupancy, prices, payment details and slots",

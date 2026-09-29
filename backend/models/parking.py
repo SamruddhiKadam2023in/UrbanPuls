@@ -1,7 +1,14 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint
+import enum
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, UniqueConstraint, Enum
 from sqlalchemy.orm import relationship
 from core.database import Base
 from core.timeutil import UTCDateTime, utcnow
+
+class VehicleType(str, enum.Enum):
+    four_wheeler = "four_wheeler"   # cars, SUVs, vans
+    two_wheeler  = "two_wheeler"    # motorcycles, scooters
+
+SLOT_PREFIX = {VehicleType.four_wheeler: "S", VehicleType.two_wheeler: "B"}
 
 class ParkingZone(Base):
     __tablename__ = "parking_zones"
@@ -11,7 +18,8 @@ class ParkingZone(Base):
     latitude       = Column(Float, nullable=False)
     longitude      = Column(Float, nullable=False)
     total_slots    = Column(Integer, default=0, nullable=False)
-    price_per_hour = Column(Float, default=20.0, nullable=False)
+    price_per_hour = Column(Float, default=20.0, nullable=False)              # cars
+    two_wheeler_price_per_hour = Column(Float, nullable=True)                  # falls back to the car rate
     vendor_id      = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     upi_id         = Column(String(100), nullable=True)   # vendor's UPI ID, e.g. parking@okicici
     upi_name       = Column(String(100), nullable=True)   # payee name shown in UPI apps
@@ -21,6 +29,11 @@ class ParkingZone(Base):
     slots  = relationship("ParkingSlot", back_populates="zone", order_by="ParkingSlot.id")
     vendor = relationship("User", foreign_keys=[vendor_id])
 
+    def price_for(self, vehicle_type: "VehicleType") -> float:
+        if vehicle_type == VehicleType.two_wheeler and self.two_wheeler_price_per_hour:
+            return self.two_wheeler_price_per_hour
+        return self.price_per_hour
+
 class ParkingSlot(Base):
     __tablename__ = "parking_slots"
     __table_args__ = (UniqueConstraint("zone_id", "slot_number", name="uq_slot_zone_number"),)
@@ -29,6 +42,8 @@ class ParkingSlot(Base):
     slot_number    = Column(String(20), nullable=False)
     is_occupied    = Column(Boolean, default=False, nullable=False)   # a car is physically parked
     is_active      = Column(Boolean, default=True, nullable=False)    # vendor can take a slot out of use
+    vehicle_type   = Column(Enum(VehicleType, name="vehicle_type"), default=VehicleType.four_wheeler,
+                            server_default=VehicleType.four_wheeler.value, nullable=False)
     vehicle_number = Column(String(20), nullable=True)
     updated_at     = Column(UTCDateTime, default=utcnow, onupdate=utcnow, nullable=False)
 

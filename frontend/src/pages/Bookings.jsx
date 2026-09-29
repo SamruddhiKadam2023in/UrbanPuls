@@ -93,7 +93,7 @@ function BookingCard({ b, children, extra }) {
             {extra}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--c-text2)', marginBottom: '4px' }}>
-            🅿 {t('booking.slot', 'Slot')} {b.slot_number} · 🚘 <span style={{ fontFamily: 'var(--font-mono)' }}>{b.vehicle_number}</span>
+            🅿 {t('booking.slot', 'Slot')} {b.slot_number} · {b.vehicle_type === 'two_wheeler' ? '🏍' : '🚗'} <span style={{ fontFamily: 'var(--font-mono)' }}>{b.vehicle_number}</span>
           </div>
           <div style={{ fontSize: '12px', color: 'var(--c-text3)', fontFamily: 'var(--font-mono)' }}>
             {b.checked_in_at

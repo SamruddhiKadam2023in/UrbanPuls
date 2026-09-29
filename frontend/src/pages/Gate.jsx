@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import api, { errorMessage } from '../utils/api'
 import { fmtDateTime, fmtTime, minutesToText, rupees, STATUS } from '../utils/format'
 import QrScanner from '../components/gate/QrScanner'
+import VehicleTypePicker, { VEHICLE_ICON } from '../components/common/VehicleTypePicker'
 import { ZONE_EVENT } from '../components/common/LiveConnection'
 
 const box = { background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '14px' }
@@ -113,16 +114,17 @@ function CheckoutModal({ booking, onClose, onDone }) {
   )
 }
 
-function WalkInModal({ zoneId, onClose, onDone }) {
+function WalkInModal({ zoneId, types = ['four_wheeler'], onClose, onDone }) {
   const { t } = useTranslation()
   const [vehicle, setVehicle] = useState('')
   const [hours, setHours] = useState(1)
+  const [vehicleType, setVehicleType] = useState(types[0])
   const [saving, setSaving] = useState(false)
   const submit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await api.post('/gate/walk-in', { zone_id: zoneId, vehicle_number: vehicle, expected_hours: Number(hours) })
+      const res = await api.post('/gate/walk-in', { zone_id: zoneId, vehicle_number: vehicle, vehicle_type: vehicleType, expected_hours: Number(hours) })
       toast.success(t('gate.walkin_done', '{{vehicle}} parked in slot {{slot}}', { vehicle: res.data.vehicle_number, slot: res.data.slot_number }))
       onDone(); onClose()
     } catch (err) { toast.error(errorMessage(err)) }
@@ -131,6 +133,7 @@ function WalkInModal({ zoneId, onClose, onDone }) {
   return (
     <Modal title={t('gate.walkin_title', 'Walk-in car')} onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {types.length > 1 && <VehicleTypePicker value={vehicleType} types={types} onChange={setVehicleType} />}
         <div>
           <label className="label">{t('booking.vehicle', 'Vehicle number')}</label>
           <input className="input" required autoFocus value={vehicle} onChange={e => setVehicle(e.target.value.toUpperCase())} placeholder="MH01AB1234" style={{ fontFamily: 'var(--font-mono)' }} />
@@ -222,7 +225,7 @@ export default function Gate() {
     <div key={b.id} style={{ ...box, display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: '180px' }}>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--c-text)' }}>{b.vehicle_number}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--c-text)' }}>{VEHICLE_ICON[b.vehicle_type] || '🚗'} {b.vehicle_number}</span>
           <span className={`badge ${STATUS[b.status]?.badge}`}>{t(`status.${b.status}`, STATUS[b.status]?.label)}</span>
           {b.is_walk_in && <span className="badge badge-yellow">{t('gate.walkin', 'Walk-in')}</span>}
         </div>
@@ -307,7 +310,7 @@ export default function Gate() {
       {scanning && <QrScanner onClose={() => setScanning(false)} onError={toast.error}
         onScan={(code) => { setScanning(false); setQuery(code); lookup(code) }} />}
       {checkout && <CheckoutModal booking={checkout} onClose={() => setCheckout(null)} onDone={() => { refresh(); setResults(null) }} />}
-      {walkIn && <WalkInModal zoneId={zoneId} onClose={() => setWalkIn(false)} onDone={refresh} />}
+      {walkIn && <WalkInModal zoneId={zoneId} types={overview?.zone.vehicle_types?.length ? overview.zone.vehicle_types : ['four_wheeler']} onClose={() => setWalkIn(false)} onDone={refresh} />}
     </div>
   )
 }

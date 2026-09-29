@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from core.database import Base
 from core.timeutil import UTCDateTime, utcnow
+from models.parking import VehicleType
 import enum
 
 class BookingStatus(str, enum.Enum):
@@ -26,6 +27,8 @@ class Booking(Base):
     slot_id           = Column(Integer, ForeignKey("parking_slots.id"), nullable=False, index=True)
     zone_id           = Column(Integer, ForeignKey("parking_zones.id"), nullable=False, index=True)
     vehicle_number    = Column(String(20), nullable=False)
+    vehicle_type      = Column(Enum(VehicleType, name="vehicle_type", create_type=False), default=VehicleType.four_wheeler,
+                               server_default=VehicleType.four_wheeler.value, nullable=False)
     is_walk_in        = Column(Boolean, default=False, nullable=False)
     status            = Column(Enum(BookingStatus, name="booking_status"), default=BookingStatus.reserved, nullable=False, index=True)
 

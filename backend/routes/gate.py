@@ -12,7 +12,7 @@ from core.database import get_db
 from core.security import require_roles
 from core.timeutil import utcnow, fmt_local
 from models.booking import Booking, BookingStatus, PaymentMethod
-from models.parking import ParkingSlot, ParkingZone
+from models.parking import ParkingSlot, ParkingZone, VehicleType
 from models.user import User, UserRole
 from routes.bookings import normalize_vehicle
 from routes.zones import get_owned_zone
@@ -34,6 +34,7 @@ class WalkInRequest(BaseModel):
     zone_id: int
     vehicle_number: str
     expected_hours: float = Field(default=1.0, gt=0, le=24)
+    vehicle_type: VehicleType = VehicleType.four_wheeler
     slot_id: Optional[int] = None
 
     @field_validator("vehicle_number")
@@ -97,7 +98,9 @@ def gate_overview(zone_id: int, db: Session = Depends(get_db), user: User = Depe
         .order_by(Booking.start_time).all()
     free = bs.available_now_counts(db, [zone.id]).get(zone.id, 0)
     return {
-        "zone": {"id": zone.id, "name": zone.name, "upi_id": zone.upi_id, "price_per_hour": zone.price_per_hour},
+        "zone": {"id": zone.id, "name": zone.name, "upi_id": zone.upi_id, "price_per_hour": zone.price_per_hour,
+                 "two_wheeler_price_per_hour": zone.two_wheeler_price_per_hour,
+                 "vehicle_types": sorted({s.vehicle_type.value for s in zone.slots if s.is_active})},
         "free_now": free,
         "parked": [booking_out(b) for b in parked],
         "upcoming": [booking_out(b) for b in upcoming],
@@ -142,7 +145,8 @@ def check_in(data: CheckInRequest, db: Session = Depends(get_db), user: User = D
     slot = db.query(ParkingSlot).filter(ParkingSlot.id == booking.slot_id).with_for_update().first()
     if slot.is_occupied or not slot.is_active:
         # The booked slot is blocked (e.g. the previous car overstayed): move to another free slot
-        alternatives = [s for s in bs.free_slots(db, booking.zone_id, now, booking.end_time) if s.id != slot.id]
+        alternatives = [s for s in bs.free_slots(db, booking.zone_id, now, booking.end_time, booking.vehicle_type)
+                        if s.id != slot.id]
         if not alternatives:
             raise HTTPException(status_code=409, detail="The booked slot is occupied and no other slot is free")
         slot = alternatives[0]
@@ -174,20 +178,21 @@ def walk_in(data: WalkInRequest, db: Session = Depends(get_db), user: User = Dep
     if data.slot_id is not None:
         slot = db.query(ParkingSlot).filter(ParkingSlot.id == data.slot_id, ParkingSlot.zone_id == zone.id) \
             .with_for_update().first()
-        if not slot or not bs.slot_is_free(db, slot, now, end):
+        if not slot or slot.vehicle_type != data.vehicle_type or not bs.slot_is_free(db, slot, now, end):
             raise HTTPException(status_code=409, detail="That slot is not free for the expected time")
     else:
-        free = bs.free_slots(db, zone.id, now, end)
+        free = bs.free_slots(db, zone.id, now, end, data.vehicle_type)
         if not free:
             raise HTTPException(status_code=409, detail="No slot is free for the expected time")
         slot = db.query(ParkingSlot).filter(ParkingSlot.id == free[0].id).with_for_update().first()
 
-    _, estimate = bs.fare_for(now, end, zone.price_per_hour)
+    rate = zone.price_for(data.vehicle_type)
+    _, estimate = bs.fare_for(now, end, rate)
     booking = Booking(
         booking_code=bs.new_booking_code(db), user_id=None, is_walk_in=True,
-        slot_id=slot.id, zone_id=zone.id, vehicle_number=data.vehicle_number,
+        slot_id=slot.id, zone_id=zone.id, vehicle_number=data.vehicle_number, vehicle_type=data.vehicle_type,
         start_time=now, end_time=end, checked_in_at=now,
-        price_per_hour=zone.price_per_hour, estimated_amount=estimate,
+        price_per_hour=rate, estimated_amount=estimate,
         status=BookingStatus.checked_in,
     )
     slot.is_occupied = True

@@ -9,6 +9,14 @@ import L, { createMap, directionsUrl, distanceKm, escapeHtml } from '../utils/le
 import api from '../utils/api'
 import { rupees } from '../utils/format'
 
+// "🚗 12 · 🏍 8" when a lot has both kinds of slots
+const freeByType = (z) => {
+  const b = z.available_by_type || {}
+  return (z.slots_by_type?.two_wheeler || 0) > 0 ? `🚗 ${b.four_wheeler || 0} · 🏍 ${b.two_wheeler || 0}` : null
+}
+const priceText = (z) => z.two_wheeler_price_per_hour && (z.slots_by_type?.two_wheeler || 0) > 0
+  ? `🚗 ₹${z.price_per_hour} · 🏍 ₹${z.two_wheeler_price_per_hour}/hr` : `₹${z.price_per_hour}/hr`
+
 const Stars = ({ avg, count }) => avg
   ? <span style={{ fontSize: '12px', color: '#ffd166' }}>★ {avg.toFixed(1)} <span style={{ color: 'var(--c-text3)' }}>({count})</span></span>
   : null
@@ -87,8 +95,8 @@ export default function MapPage() {
           <div style="font-weight:700;font-size:14px;color:#e2e8f0;margin-bottom:4px">${escapeHtml(zone.name)}</div>
           <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">${escapeHtml(zone.address)}</div>
           <div style="display:flex;gap:12px;margin-bottom:10px;font-size:12px">
-            <span style="color:${color};font-weight:600">${avail} ${escapeHtml(t('map.free_now', 'free now'))}</span>
-            <span style="color:#64748b">₹${zone.price_per_hour}/hr</span>
+            <span style="color:${color};font-weight:600">${escapeHtml(freeByType(zone) || `${avail} ${t('map.free_now', 'free now')}`)}</span>
+            <span style="color:#64748b">${escapeHtml(priceText(zone))}</span>
             ${zone.avg_rating ? `<span style="color:#ffd166">★ ${zone.avg_rating.toFixed(1)}</span>` : ''}
           </div>
           <div style="display:flex;gap:6px">
@@ -172,7 +180,7 @@ export default function MapPage() {
                       <div style={{ flex: 1, minWidth: '200px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px', flexWrap: 'wrap' }}>
                           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '15px', color: 'var(--c-text)' }}>{zone.name}</span>
-                          <span className="badge" style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}>{avail} {t('map.free_now', 'free now')}</span>
+                          <span className="badge" style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}>{freeByType(zone) || `${avail} ${t('map.free_now', 'free now')}`}</span>
                           <Stars avg={zone.avg_rating} count={zone.rating_count} />
                         </div>
                         <p style={{ fontSize: '12px', color: 'var(--c-text2)', marginBottom: '8px' }}>
@@ -181,7 +189,7 @@ export default function MapPage() {
                         <div style={{ height: '5px', background: 'var(--c-bg2)', borderRadius: '3px', overflow: 'hidden', marginBottom: '6px' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: color }} />
                         </div>
-                        <span style={{ fontSize: '11px', color: 'var(--c-text3)' }}>{rupees(zone.price_per_hour)}/hr</span>
+                        <span style={{ fontSize: '11px', color: 'var(--c-text3)' }}>{priceText(zone)}</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <button onClick={() => { dispatch(selectZone(zone)); setShowBooking(true) }} className="btn btn-primary btn-sm">{t('map.reserve', 'Reserve')} →</button>
@@ -217,7 +225,7 @@ export default function MapPage() {
                 {[
                   [t('map.free_now', 'Free now'), selected.available_slots || 0, '#06d6a0'],
                   [t('map.total', 'Total'), selected.total_slots, 'var(--c-text)'],
-                  [t('map.price', 'Price'), `${rupees(selected.price_per_hour)}/hr`, '#3b82f6'],
+                  [t('map.price', 'Price'), priceText(selected), '#3b82f6'],
                 ].map(([l, v, c]) => (
                   <div key={l} style={{ background: 'var(--c-bg2)', borderRadius: '8px', padding: '10px' }}>
                     <p style={{ fontSize: '10px', color: 'var(--c-text3)', marginBottom: '3px', textTransform: 'uppercase' }}>{l}</p>

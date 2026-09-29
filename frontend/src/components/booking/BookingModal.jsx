@@ -8,6 +8,7 @@ import api, { errorMessage } from '../../utils/api'
 import { fetchZones } from '../../store/slices/zonesSlice'
 import { speakBookingConfirm } from '../../utils/voice'
 import { fmtDateTime, localInputToISO, minutesToText, rupees, toLocalInput } from '../../utils/format'
+import VehicleTypePicker, { VEHICLE_ICON } from '../common/VehicleTypePicker'
 
 const POINT_VALUE = 0.5
 const GRACE_MINUTES = 15
@@ -28,9 +29,13 @@ export default function BookingModal({ zone, onClose }) {
     start: toLocalInput(new Date(now.getTime() + 5 * 60000)),
     end:   toLocalInput(new Date(now.getTime() + 125 * 60000)),
     vehicle: '',
+    vehicleType: 'four_wheeler',
     slot: null,
     usePoints: false,
   })
+  // Only offer two-wheeler if this lot has two-wheeler slots
+  const types = ['four_wheeler', 'two_wheeler'].filter(vt => (zone.slots_by_type?.[vt] || 0) > 0)
+  const rateFor = (vt) => vt === 'two_wheeler' ? (zone.two_wheeler_price_per_hour || zone.price_per_hour) : zone.price_per_hour
 
   const points = user?.points || 0
   const pointsToRedeem = form.usePoints ? points : 0
@@ -44,7 +49,7 @@ export default function BookingModal({ zone, onClose }) {
     setLoading(true)
     try {
       const res = await api.get(`/zones/${zone.id}/availability`, {
-        params: { start: localInputToISO(form.start), end: localInputToISO(form.end) },
+        params: { start: localInputToISO(form.start), end: localInputToISO(form.end), vehicle_type: form.vehicleType },
       })
       setAvail(res.data)
       setForm(f => ({ ...f, slot: res.data.slots[0] || null }))
@@ -62,6 +67,7 @@ export default function BookingModal({ zone, onClose }) {
         start_time: localInputToISO(form.start),
         end_time: localInputToISO(form.end),
         vehicle_number: form.vehicle,
+        vehicle_type: form.vehicleType,
         points_to_redeem: pointsToRedeem,
       })
       setBooking(res.data)
@@ -79,7 +85,7 @@ export default function BookingModal({ zone, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', color: 'var(--c-text)' }}>{t('booking.title', 'Reserve parking')}</h2>
-          <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginTop: '2px' }}>🏢 {zone.name} · {rupees(zone.price_per_hour)}/hr</p>
+          <p style={{ fontSize: '13px', color: 'var(--c-text2)', marginTop: '2px' }}>🏢 {zone.name} · {VEHICLE_ICON[form.vehicleType]} {rupees(rateFor(form.vehicleType))}/hr</p>
         </div>
         <button onClick={onClose} aria-label="Close" style={{ background: 'var(--c-bg3)', border: '1px solid var(--c-border)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', color: 'var(--c-text2)', fontSize: '16px' }}>✕</button>
       </div>
@@ -128,6 +134,11 @@ export default function BookingModal({ zone, onClose }) {
               onChange={e => setForm(f => ({ ...f, end: e.target.value }))} />
           </div>
         </div>
+        {types.length > 1 && (
+          <VehicleTypePicker value={form.vehicleType} types={types}
+            onChange={vt => setForm(f => ({ ...f, vehicleType: vt }))}
+            hint={Object.fromEntries(types.map(vt => [vt, `${rupees(rateFor(vt))}/hr`]))} />
+        )}
         <div>
           <label className="label">{t('booking.vehicle', 'Vehicle number')}</label>
           <input className="input" placeholder={t('booking.vehicle_ph', 'e.g. MH01AB1234')} value={form.vehicle} maxLength={14}
@@ -178,7 +189,7 @@ export default function BookingModal({ zone, onClose }) {
         <div style={{ background: 'var(--c-bg2)', border: '1px solid var(--c-border)', borderRadius: '14px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {row(`🏢 ${t('booking.zone', 'Zone')}`, zone.name)}
           {row(`🅿 ${t('booking.slot', 'Slot')}`, form.slot.slot_number)}
-          {row(`🚗 ${t('booking.vehicle_short', 'Vehicle')}`, form.vehicle)}
+          {row(`${VEHICLE_ICON[form.vehicleType]} ${t('booking.vehicle_short', 'Vehicle')}`, form.vehicle)}
           {row(`⏱ ${t('booking.arrive_short', 'Arrive')}`, fmtDateTime(localInputToISO(form.start)))}
           {row(`⏱ ${t('booking.leave_short', 'Leave')}`, fmtDateTime(localInputToISO(form.end)))}
           {row(`⏳ ${t('booking.billed_time', 'Billed time')}`, minutesToText(avail.billed_minutes))}

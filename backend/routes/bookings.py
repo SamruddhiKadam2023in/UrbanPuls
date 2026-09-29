@@ -12,7 +12,7 @@ from core.security import get_current_user, require_verified
 from core.timeutil import to_utc, utcnow, fmt_local
 from models.activity import Rating
 from models.booking import Booking, BookingStatus
-from models.parking import ParkingSlot, ParkingZone
+from models.parking import ParkingSlot, ParkingZone, VehicleType
 from models.user import User, UserRole
 from schemas import BookingOut, booking_out
 from services import booking_service as bs
@@ -35,6 +35,7 @@ class ReservationCreate(BaseModel):
     start_time: AwareDatetime
     end_time: AwareDatetime
     vehicle_number: str
+    vehicle_type: VehicleType = VehicleType.four_wheeler
     points_to_redeem: int = Field(default=0, ge=0)
 
     @field_validator("vehicle_number")
@@ -91,16 +92,19 @@ def create_reservation(request: Request, data: ReservationCreate, db: Session = 
         .with_for_update().first()
     if not slot:
         raise HTTPException(status_code=404, detail="Slot not found in this zone")
+    if slot.vehicle_type != data.vehicle_type:
+        raise HTTPException(status_code=400, detail="This slot is for a different type of vehicle")
     if not bs.slot_is_free(db, slot, start, end):
         raise HTTPException(status_code=409, detail="This slot is already taken for part of that time. Please pick another slot.")
 
-    _, estimate = bs.fare_for(start, end, zone.price_per_hour)
+    rate = zone.price_for(data.vehicle_type)
+    _, estimate = bs.fare_for(start, end, rate)
     booking = Booking(
         booking_code=bs.new_booking_code(db),
         user_id=user.id, slot_id=slot.id, zone_id=zone.id,
-        vehicle_number=data.vehicle_number,
+        vehicle_number=data.vehicle_number, vehicle_type=data.vehicle_type,
         start_time=start, end_time=end,
-        price_per_hour=zone.price_per_hour, estimated_amount=estimate,
+        price_per_hour=rate, estimated_amount=estimate,
         points_to_redeem=data.points_to_redeem,
         status=BookingStatus.reserved,
     )
