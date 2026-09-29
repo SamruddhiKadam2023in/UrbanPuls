@@ -2,7 +2,8 @@
 export const ROLES = {
   staff:     ['admin', 'vendor'],            // dashboard, analytics, reports
   zones:     ['admin', 'vendor'],            // zone and slot management
-  gate:      ['admin', 'vendor'],            // gate check-in / checkout
+  gate:      ['admin', 'vendor', 'attendant'], // gate check-in / checkout
+  partner:   ['vendor'],                     // gate staff management
   detection: ['admin', 'vendor', 'police'],  // YOLO detection
   police:    ['admin', 'police'],            // complaint map and resolution
   admin:     ['admin'],                      // user management

@@ -25,7 +25,7 @@ from services.pdf_service import generate_receipt
 
 log = logging.getLogger("tpms.gate")
 router = APIRouter()
-gate_staff = require_roles(UserRole.vendor, UserRole.admin)
+gate_staff = require_roles(UserRole.vendor, UserRole.admin, UserRole.attendant)
 
 class CheckInRequest(BaseModel):
     booking_code: str = Field(min_length=4, max_length=16)
@@ -49,7 +49,7 @@ class CheckOutRequest(BaseModel):
 def _managed_zone_ids(db: Session, user: User) -> list[int] | None:
     if user.role == UserRole.admin:
         return None
-    return [z.id for z in db.query(ParkingZone.id).filter(ParkingZone.vendor_id == user.id).all()]
+    return [z.id for z in db.query(ParkingZone.id).filter(ParkingZone.vendor_id == user.zone_owner_id).all()]
 
 def _managed_booking(db: Session, user: User, *, booking_id: int | None = None, code: str | None = None) -> Booking:
     q = db.query(Booking)

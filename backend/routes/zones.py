@@ -74,7 +74,7 @@ def get_owned_zone(db: Session, zone_id: int, user: User) -> ParkingZone:
     zone = db.get(ParkingZone, zone_id)
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
-    if user.role != UserRole.admin and zone.vendor_id != user.id:
+    if user.role != UserRole.admin and zone.vendor_id != user.zone_owner_id:
         raise HTTPException(status_code=403, detail="This zone belongs to another Parking Partner")
     return zone
 
@@ -202,11 +202,12 @@ def update_slot(zone_id: int, slot_id: int, data: SlotUpdate,
     return {"message": "Slot updated"}
 
 @router.get("/manage/mine", response_model=list[ZoneOut])
-def my_zones(db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
-    """Zones the caller manages, including inactive ones (admins see all)."""
+def my_zones(db: Session = Depends(get_db),
+             user: User = Depends(require_roles(UserRole.vendor, UserRole.admin, UserRole.attendant))):
+    """Zones the caller manages (gate attendants: their employer's), including inactive ones. Admins see all."""
     q = db.query(ParkingZone).options(selectinload(ParkingZone.slots))
     if user.role != UserRole.admin:
-        q = q.filter(ParkingZone.vendor_id == user.id)
+        q = q.filter(ParkingZone.vendor_id == user.zone_owner_id)
     zones = q.order_by(ParkingZone.id).all()
     ids = [z.id for z in zones]
     counts = bs.available_now_counts(db, ids) if ids else {}

@@ -192,7 +192,7 @@ def download_receipt(booking_id: int, db: Session = Depends(get_db), user: User 
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     allowed = (booking.user_id == user.id or user.role == UserRole.admin
-               or (user.role == UserRole.vendor and booking.zone.vendor_id == user.id))
+               or (user.role in (UserRole.vendor, UserRole.attendant) and booking.zone.vendor_id == user.zone_owner_id))
     if not allowed:
         raise HTTPException(status_code=404, detail="Booking not found")
     if not booking.receipt_path:

@@ -29,6 +29,13 @@ class UserCreate(BaseModel):
     def _password(cls, v: str) -> str:
         return validate_password(v)
 
+    @field_validator("role")
+    @classmethod
+    def _role(cls, v: UserRole) -> UserRole:
+        if v == UserRole.attendant:
+            raise ValueError("Gate attendants are added by their Parking Partner from the Staff page")
+        return v
+
 class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
@@ -68,9 +75,13 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), a
         raise HTTPException(status_code=404, detail="User not found")
     if user.id == admin.id and (data.role not in (None, UserRole.admin) or data.is_active is False):
         raise HTTPException(status_code=400, detail="You cannot remove your own admin access")
+    if data.role == UserRole.attendant and user.role != UserRole.attendant:
+        raise HTTPException(status_code=400, detail="Gate attendants are added by their Parking Partner from the Staff page")
     was_requested = user.vendor_requested
     if data.role is not None and data.role != user.role:
         user.role = data.role
+        if data.role != UserRole.attendant:
+            user.employer_id = None
         if data.role == UserRole.vendor:
             user.vendor_requested = False
             notify(db, user, "account", "vendor_approved", link="/zones", email=True)

@@ -17,6 +17,7 @@ class UserOut(BaseModel):
     vendor_requested: bool
     is_active: bool
     created_at: Optional[datetime] = None
+    employer_id: Optional[int] = None
 
 class SlotOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

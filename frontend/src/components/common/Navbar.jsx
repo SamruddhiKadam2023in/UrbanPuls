@@ -19,12 +19,14 @@ const L = {
   detection:  { to: '/detection',  icon: '🔍', key: 'nav.yolo',       label: 'YOLO AI' },
   dashboard:  { to: '/dashboard',  icon: '⚙️', key: 'nav.dashboard',  label: 'Dashboard' },
   admin:      { to: '/admin',      icon: '🛡', key: 'nav.admin',      label: 'Admin' },
+  staff:      { to: '/staff',      icon: '👥', key: 'nav.staff',      label: 'Staff' },
 }
 
 // Each role's own work comes first. Staff keep the driver features under "Park a car".
 const NAV_BY_ROLE = {
   user:   { main: [L.map, L.bookings, L.complaints, L.emergency], more: [] },
-  vendor: { main: [L.gate, L.zones, L.reports],                  more: [L.map, L.bookings, L.complaints, L.emergency] },
+  vendor: { main: [L.gate, L.zones, L.reports, L.staff],         more: [L.map, L.bookings, L.complaints, L.emergency] },
+  attendant: { main: [L.gate], more: [] },                        // gate staff only work the gate
   police: { main: [L.police, L.detection],                       more: [L.map, L.bookings, L.complaints, L.emergency] },
   admin:  { main: [L.dashboard, L.admin, L.police, L.zones, L.reports, L.detection], more: [L.map, L.bookings, L.complaints, L.emergency] },
 }

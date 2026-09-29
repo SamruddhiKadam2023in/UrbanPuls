@@ -23,6 +23,7 @@ Parking lot owners and operators are called **Parking Partners** in the app, and
 | User | Reserve, extend and cancel bookings; rate visits; report complaints; earn points | Map, Bookings, Complaints, Notifications |
 | Parking Partner | Owns or runs parking lots. Everything a user can, plus manage their own lots and slots, check cars in and out, record payments, see reports. Sign-ups need admin approval | + Gate, Zones, Analytics, Dashboard |
 | Field Officer | Staff who act on verified complaints on the ground (your team, lot security, or traffic police if you partner with them). Resolve complaints on a map, download fines, use violation detection | + Enforcement, Detection |
+| Gate Attendant | Staff added by a Parking Partner on the Staff page. Can only use the Gate screen for that partner's lots | Gate only |
 | Admin | Everything: manage users and roles, approve Parking Partners, create staff accounts, verify complaints | + Admin |
 
 ## Live updates and notifications
@@ -89,6 +90,7 @@ Development uses SQLite by default. Emails (verification and password reset link
 | Parking Partner | vendor@tpms.com | vendor123 |
 | User | user@tpms.com | user123 |
 | Field Officer | police@tpms.com | police123 |
+| Gate Attendant (works for the demo partner) | gate@tpms.com | gate1234 |
 
 ## Languages
 

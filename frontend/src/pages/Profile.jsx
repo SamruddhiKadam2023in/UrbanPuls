@@ -170,6 +170,7 @@ export default function Profile() {
     admin:  { label: t('profile.roles.admin'),  badge: 'badge-pink',   emoji: '👑' },
     vendor: { label: t('profile.roles.vendor'), badge: 'badge-yellow', emoji: '🏢' },
     police: { label: t('roles.police'),         badge: 'badge-blue',   emoji: '🦺' },
+    attendant: { label: t('roles.attendant'),   badge: 'badge-green',  emoji: '🚧' },
     user:   { label: t('profile.roles.user'),   badge: 'badge-blue',   emoji: '👤' },
   }
   const rc = ROLE_CONFIG[user.role] || ROLE_CONFIG.user

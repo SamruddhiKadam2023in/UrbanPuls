@@ -4,15 +4,17 @@ from datetime import date, datetime, time, timedelta
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.security import require_roles
+from core.security import hash_password, require_roles, validate_password
 from core.timeutil import utcnow, to_local, LOCAL_TZ
 from models.booking import Booking, BookingStatus, PaymentMethod
 from models.parking import ParkingZone
 from models.user import User, UserRole
+from schemas import UserOut
 from services import booking_service as bs
 from services.pdf_service import generate_report_pdf
 
@@ -238,3 +240,63 @@ def today_summary(db: Session = Depends(get_db), user: User = Depends(vendor_or_
         "lots": lots,
         "issues": issues,
     }
+
+
+# ── Gate staff (attendants) ───────────────────────────────────────────────────
+partner_only = require_roles(UserRole.vendor)
+
+class StaffCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def _password(cls, v: str) -> str:
+        return validate_password(v)
+
+class StaffUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    password: Optional[str] = None      # partner sets a new temporary password
+
+    @field_validator("password")
+    @classmethod
+    def _password(cls, v: Optional[str]) -> Optional[str]:
+        return validate_password(v) if v is not None else v
+
+def _own_staff(db: Session, partner: User, staff_id: int) -> User:
+    staff = db.query(User).filter(User.id == staff_id, User.employer_id == partner.id,
+                                  User.role == UserRole.attendant).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    return staff
+
+@router.get("/staff", response_model=list[UserOut])
+def list_staff(db: Session = Depends(get_db), partner: User = Depends(partner_only)):
+    return db.query(User).filter(User.employer_id == partner.id, User.role == UserRole.attendant) \
+        .order_by(User.created_at.desc()).all()
+
+@router.post("/staff", status_code=201, response_model=UserOut)
+def create_staff(data: StaffCreate, db: Session = Depends(get_db), partner: User = Depends(partner_only)):
+    """Gate attendants sign in with their own account and can only use the Gate screen for this partner's lots."""
+    email = data.email.lower()
+    if db.query(User.id).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    staff = User(name=data.name.strip(), email=email, phone=data.phone, role=UserRole.attendant,
+                 employer_id=partner.id, hashed_password=hash_password(data.password), email_verified=True)
+    db.add(staff)
+    db.commit()
+    db.refresh(staff)
+    return staff
+
+@router.patch("/staff/{staff_id}", response_model=UserOut)
+def update_staff(staff_id: int, data: StaffUpdate, db: Session = Depends(get_db), partner: User = Depends(partner_only)):
+    staff = _own_staff(db, partner, staff_id)
+    if data.is_active is not None:
+        staff.is_active = data.is_active
+    if data.password is not None:
+        staff.hashed_password = hash_password(data.password)   # also signs them out everywhere
+    db.commit()
+    db.refresh(staff)
+    return staff

@@ -27,6 +27,7 @@ import Analytics      from './pages/AnalyticsPage'
 import Zones          from './pages/Zones'
 import Admin          from './pages/Admin'
 import Police         from './pages/Police'
+import Staff          from './pages/Staff'
 
 function ProtectedRoute({ children, area }) {
   const token = useSelector(s => s.auth.token)
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/zones"         element={p(<Zones />, 'zones')} />
             <Route path="/police"        element={p(<Police />, 'police')} />
             <Route path="/admin"         element={p(<Admin />, 'admin')} />
+            <Route path="/staff"         element={p(<Staff />, 'partner')} />
             <Route path="*"              element={<Navigate to="/" replace />} />
           </Routes>
         </main>

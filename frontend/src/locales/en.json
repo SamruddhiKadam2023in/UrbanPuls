@@ -419,6 +419,7 @@
     "park_a_car": "Park a car",
     "police": "Enforcement",
     "reports": "Reports",
+    "staff": "Staff",
     "yolo": "YOLO AI",
     "zones": "Zones"
   },
@@ -521,9 +522,22 @@
   },
   "roles": {
     "admin": "Admin",
+    "attendant": "Gate Attendant",
     "police": "Field Officer",
     "user": "User",
     "vendor": "Parking Partner"
+  },
+  "staff": {
+    "add": "Add attendant",
+    "added": "{{name}} can now sign in and use the Gate screen",
+    "added_on": "Added {{date}}",
+    "disable_confirm": "Remove gate access for {{name}}? They are signed out immediately.",
+    "new_password_prompt": "New temporary password for {{name}} (at least 8 characters, with a letter and a number):",
+    "none": "No attendants yet. Add the people who work at your gates.",
+    "password_reset": "Password changed. {{name}} has been signed out and must use the new password.",
+    "reset_password": "New password",
+    "subtitle": "Attendants sign in with their own account. They can only use the Gate screen for your lots: no prices, lots or reports.",
+    "title": "Gate staff"
   },
   "status": {
     "cancelled": "Cancelled",

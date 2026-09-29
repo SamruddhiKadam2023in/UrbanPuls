@@ -112,10 +112,14 @@ export default function Admin() {
                       <div style={{ color: 'var(--c-text3)', fontSize: '12px' }}>{u.email}{!u.email_verified && ` · ${t('admin.unverified', 'unverified')}`}</div>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <select className="input" style={{ padding: '6px 8px', width: 'auto' }} value={u.role} disabled={u.id === me?.id}
-                        onChange={e => update(u, { role: e.target.value }, t('admin.role_changed', 'Role updated'))}>
-                        {ROLES.map(r => <option key={r} value={r}>{t(`roles.${r}`, r)}</option>)}
-                      </select>
+                      {u.role === 'attendant'
+                        ? <span className="badge badge-blue">{t('roles.attendant', 'Gate Attendant')}</span>
+                        : (
+                          <select className="input" style={{ padding: '6px 8px', width: 'auto' }} value={u.role} disabled={u.id === me?.id}
+                            onChange={e => update(u, { role: e.target.value }, t('admin.role_changed', 'Role updated'))}>
+                            {ROLES.map(r => <option key={r} value={r}>{t(`roles.${r}`, r)}</option>)}
+                          </select>
+                        )}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span className={`badge ${u.is_active ? 'badge-green' : 'badge-red'}`}>{u.is_active ? t('admin.active', 'Active') : t('admin.disabled', 'Disabled')}</span>

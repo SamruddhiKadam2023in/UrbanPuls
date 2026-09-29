@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Boolean, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from core.database import Base
 from core.timeutil import UTCDateTime, utcnow
@@ -8,7 +8,8 @@ class UserRole(str, enum.Enum):
     user = "user"
     vendor = "vendor"
     admin = "admin"
-    police = "police"
+    police = "police"          # shown as "Field Officer"
+    attendant = "attendant"    # gate staff employed by a Parking Partner (vendor)
 
 class User(Base):
     __tablename__ = "users"
@@ -23,7 +24,14 @@ class User(Base):
     is_active        = Column(Boolean, default=True, nullable=False)
     email_verified   = Column(Boolean, default=False, nullable=False)
     vendor_requested = Column(Boolean, default=False, nullable=False)   # awaiting admin approval
+    employer_id      = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)   # attendants only
     created_at       = Column(UTCDateTime, default=utcnow, nullable=False)
 
     bookings   = relationship("Booking",   back_populates="user", foreign_keys="Booking.user_id")
     complaints = relationship("Complaint", back_populates="user", foreign_keys="Complaint.user_id")
+    employer   = relationship("User", remote_side=[id])
+
+    @property
+    def zone_owner_id(self) -> int:
+        """Whose parking zones this account works on: its own, or its employer's for gate attendants."""
+        return self.employer_id if self.role == UserRole.attendant else self.id

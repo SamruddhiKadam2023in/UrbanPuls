@@ -79,6 +79,11 @@ def user_from_token(token: str, db: Session) -> User:
         raise credentials_exception
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
+    if user.role == UserRole.attendant:
+        # Gate staff lose access as soon as their Parking Partner is disabled or loses the partner role
+        employer = db.get(User, user.employer_id) if user.employer_id else None
+        if not employer or not employer.is_active or employer.role != UserRole.vendor:
+            raise HTTPException(status_code=403, detail="Your employer's account is not active")
     return user
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
