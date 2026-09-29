@@ -3,7 +3,7 @@ from models.user import User, UserRole
 from conftest import make_user, auth, PASSWORD
 
 def register(client, **overrides):
-    body = {"name": "New Person", "email": "new@test.com", "password": "goodpass1", **overrides}
+    body = {"name": "New Person", "email": "new@test.com", "password": "goodpass1", "accept_terms": True, **overrides}
     return client.post("/api/auth/register", json=body)
 
 def test_register_cannot_choose_admin_role(client, db):
@@ -18,6 +18,11 @@ def test_vendor_signup_needs_approval(client, db):
     assert res.status_code == 201
     user = db.query(User).filter_by(email="new@test.com").one()
     assert user.role == UserRole.user and user.vendor_requested
+
+def test_terms_must_be_accepted(client, db):
+    assert register(client, accept_terms=False).status_code == 422
+    assert register(client).status_code == 201
+    assert db.query(User).filter_by(email="new@test.com").one().terms_accepted_at is not None
 
 def test_weak_password_rejected(client):
     assert register(client, password="short1").status_code == 422

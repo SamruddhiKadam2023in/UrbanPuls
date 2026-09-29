@@ -1,12 +1,16 @@
 import re
+import secrets
 from typing import Literal, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.ratelimit import limiter
+from core.timeutil import utcnow
 from core.security import (hash_password, verify_password, validate_password, create_access_token,
                            decode_token, get_current_user, password_fingerprint)
 from models.user import User, UserRole
@@ -25,6 +29,14 @@ class RegisterRequest(BaseModel):
     phone: Optional[str] = None
     # Anyone can ask for a vendor account; an admin has to approve it
     account_type: Literal["user", "vendor"] = "user"
+    accept_terms: bool = False
+
+    @field_validator("accept_terms")
+    @classmethod
+    def _terms(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Please accept the Terms of use and Privacy policy")
+        return v
 
     @field_validator("name")
     @classmethod
@@ -74,6 +86,7 @@ def register(request: Request, req: RegisterRequest, background: BackgroundTasks
         hashed_password=hash_password(req.password),
         role=UserRole.user,
         vendor_requested=req.account_type == "vendor",
+        terms_accepted_at=utcnow(),
     )
     db.add(user)
     db.commit()
@@ -232,3 +245,70 @@ def reset_password(request: Request, req: ResetPasswordRequest, db: Session = De
     user.email_verified = True
     db.commit()
     return {"message": "Password updated. You can now sign in."}
+
+
+# ── Your data (India DPDP Act 2023: access and erasure) ───────────────────────
+class DeleteAccount(BaseModel):
+    password: str
+
+@router.get("/me/export")
+def export_my_data(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Everything TPMS stores about the signed-in person, as one JSON download."""
+    from models.activity import Notification, Rating
+    from models.booking import Booking, Complaint
+    from schemas import booking_out
+    bookings = db.query(Booking).filter(Booking.user_id == user.id).order_by(Booking.created_at).all()
+    complaints = db.query(Complaint).filter(Complaint.user_id == user.id).order_by(Complaint.created_at).all()
+    ratings = db.query(Rating).filter(Rating.user_id == user.id).all()
+    notes = db.query(Notification).filter(Notification.user_id == user.id).order_by(Notification.created_at).all()
+    data = {
+        "exported_at": utcnow(),
+        "account": UserOut.model_validate(user).model_dump(),
+        "bookings": [booking_out(b).model_dump() for b in bookings],
+        "complaints": [{"id": c.id, "type": c.complaint_type.value, "description": c.description,
+                        "latitude": c.latitude, "longitude": c.longitude, "photo_url": c.photo_url,
+                        "status": c.status.value, "points_awarded": c.points_awarded, "created_at": c.created_at}
+                       for c in complaints],
+        "ratings": [{"booking_id": r.booking_id, "zone_id": r.zone_id, "stars": r.stars, "comment": r.comment,
+                     "created_at": r.created_at} for r in ratings],
+        "notifications": [{"title": n.title, "message": n.message, "created_at": n.created_at} for n in notes],
+    }
+    return JSONResponse(content=jsonable_encoder(data),
+                        headers={"Content-Disposition": f'attachment; filename="tpms-my-data-{user.id}.json"'})
+
+@router.delete("/me")
+@limiter.limit("5/hour")
+def delete_my_account(request: Request, data: DeleteAccount, db: Session = Depends(get_db),
+                      user: User = Depends(get_current_user)):
+    """
+    Closes the account and removes personal details. Booking and complaint records stay (without the
+    person's details) because Parking Partners' receipts and revenue reports depend on them.
+    """
+    from models.activity import Notification
+    from models.booking import Booking, BookingStatus
+    from models.parking import ParkingZone
+
+    if not verify_password(data.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if db.query(Booking.id).filter(Booking.user_id == user.id, Booking.status == BookingStatus.checked_in).first():
+        raise HTTPException(status_code=400, detail="Your vehicle is still parked. Check out at the gate first.")
+    if user.role == UserRole.vendor and db.query(ParkingZone.id).filter(ParkingZone.vendor_id == user.id).first():
+        raise HTTPException(status_code=400, detail="You still own parking lots. Contact the TPMS administrator to transfer or close them first.")
+    if user.role == UserRole.admin and db.query(User).filter(User.role == UserRole.admin, User.is_active.is_(True),
+                                                              User.id != user.id).count() == 0:
+        raise HTTPException(status_code=400, detail="You are the only administrator. Make someone else an admin first.")
+
+    for b in db.query(Booking).filter(Booking.user_id == user.id, Booking.status == BookingStatus.reserved).all():
+        b.status = BookingStatus.cancelled
+    db.query(Notification).filter(Notification.user_id == user.id).delete()
+    # Staff employed by a closing partner lose access through the employer check in core/security.py
+    user.name = "Deleted user"
+    user.email = f"deleted-{user.id}@deleted.invalid"
+    user.phone = None
+    user.hashed_password = hash_password(secrets.token_urlsafe(32))   # nobody knows it; also ends all sessions
+    user.is_active = False
+    user.email_verified = False
+    user.vendor_requested = False
+    user.points = 0
+    db.commit()
+    return {"message": "Your account has been deleted"}

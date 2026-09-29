@@ -11,7 +11,7 @@ export default function Register() {
   const navigate  = useNavigate()
   const { t }     = useTranslation()
   const { loading } = useSelector(s => s.auth)
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', account_type: 'user' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', account_type: 'user', accept_terms: false })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -51,6 +51,15 @@ export default function Register() {
             </p>
           )}
         </div>
+        <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '13px', color: 'var(--c-text2)', cursor: 'pointer', lineHeight: 1.5 }}>
+          <input type="checkbox" required checked={form.accept_terms} onChange={e => setForm({ ...form, accept_terms: e.target.checked })} style={{ marginTop: '3px' }} />
+          <span>
+            {t('auth.agree_prefix', 'I agree to the')}{' '}
+            <Link to="/terms" target="_blank" style={{ color: 'var(--c-primary-light)' }}>{t('landing.terms', 'Terms of use')}</Link>
+            {' '}{t('auth.agree_and', 'and')}{' '}
+            <Link to="/privacy" target="_blank" style={{ color: 'var(--c-primary-light)' }}>{t('landing.privacy', 'Privacy policy')}</Link>
+          </span>
+        </label>
         <button className="btn btn-lg" type="submit" disabled={loading} style={{ width: '100%', marginTop: '4px', background: 'linear-gradient(135deg, #f72585, #7209b7)', color: 'white', boxShadow: '0 4px 20px rgba(247,37,133,0.35)' }}>
           {loading ? t('auth.creating') : t('auth.create_btn')}
         </button>

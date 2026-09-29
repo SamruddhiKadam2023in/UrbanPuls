@@ -25,6 +25,7 @@ class User(Base):
     email_verified   = Column(Boolean, default=False, nullable=False)
     vendor_requested = Column(Boolean, default=False, nullable=False)   # awaiting admin approval
     employer_id      = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)   # attendants only
+    terms_accepted_at = Column(UTCDateTime, nullable=True)   # consent record (DPDP Act); staff accounts: null
     created_at       = Column(UTCDateTime, default=utcnow, nullable=False)
 
     bookings   = relationship("Booking",   back_populates="user", foreign_keys="Booking.user_id")

@@ -28,6 +28,8 @@ import Zones          from './pages/Zones'
 import Admin          from './pages/Admin'
 import Police         from './pages/Police'
 import Staff          from './pages/Staff'
+import Landing        from './pages/Landing'
+import { Privacy, Terms } from './pages/Legal'
 
 function ProtectedRoute({ children, area }) {
   const token = useSelector(s => s.auth.token)
@@ -70,7 +72,9 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password"  element={<ResetPassword />} />
             <Route path="/verify-email"    element={<VerifyEmail />} />
-            <Route path="/"              element={p(<Home />)} />
+            <Route path="/"              element={token ? p(<Home />) : <Landing />} />
+            <Route path="/privacy"       element={<Privacy />} />
+            <Route path="/terms"         element={<Terms />} />
             <Route path="/map"           element={p(<MapPage />)} />
             <Route path="/bookings"      element={p(<Bookings />)} />
             <Route path="/complaints"    element={p(<Complaints />)} />

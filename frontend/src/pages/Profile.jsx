@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import i18n from '../i18n'
 import api, { errorMessage } from '../utils/api'
 import { tokenReplaced, userUpdated } from '../store/slices/authSlice'
+import { Link } from 'react-router-dom'
+import YourData from '../components/account/YourData'
 
 const LANGS = [
   { code: 'en', label: 'English', emoji: '🇬🇧' },
@@ -204,6 +206,16 @@ export default function Profile() {
         <div className="card" style={{ padding: '24px' }}>
           <h3 style={sectionTitle}>🔒 {t('auth.password')}</h3>
           <PasswordForm />
+        </div>
+
+        <div className="card" style={{ padding: '24px' }}>
+          <h3 style={sectionTitle}>🛡 {t('privacy_ui.title', 'Your data')}</h3>
+          <YourData />
+          <p style={{ ...hint, marginTop: '14px' }}>
+            <Link to="/privacy" style={{ color: 'var(--c-primary-light)' }}>{t('landing.privacy', 'Privacy policy')}</Link>
+            {' · '}
+            <Link to="/terms" style={{ color: 'var(--c-primary-light)' }}>{t('landing.terms', 'Terms of use')}</Link>
+          </p>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
