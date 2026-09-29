@@ -59,9 +59,9 @@ def main():
 
     vendor = users[UserRole.vendor]
     if not db.query(User).filter(User.email == "gate@tpms.com").first():
-        db.add(User(name="Gate Attendant", email="gate@tpms.com", hashed_password=hash_password("gate1234"),
+        db.add(User(name="Gate Attendant", email="gate@tpms.com", hashed_password=hash_password("gate12345"),
                     role=UserRole.attendant, employer_id=vendor.id, email_verified=True))
-        print("Created attendant gate@tpms.com / gate1234 (works for vendor@tpms.com)")
+        print("Created attendant gate@tpms.com / gate12345 (works for vendor@tpms.com)")
     zone_ids = []
     for name, addr, lat, lng, slots, price in ZONES:
         zone = db.query(ParkingZone).filter(ParkingZone.name == name).first()

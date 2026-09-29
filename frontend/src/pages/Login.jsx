@@ -13,7 +13,7 @@ const SHOW_DEMO = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_LOGINS =
 const DEMO_ACCOUNTS = SHOW_DEMO ? [
   ['user',   '🚗', 'user@tpms.com',   'user123'],
   ['vendor', '🏢', 'vendor@tpms.com', 'vendor123'],
-  ['attendant', '🚧', 'gate@tpms.com', 'gate1234'],
+  ['attendant', '🚧', 'gate@tpms.com', 'gate12345'],
   ['police', '🦺', 'police@tpms.com', 'police123'],
   ['admin',  '🛡', 'admin@tpms.com',  'admin123'],
 ] : []

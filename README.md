@@ -90,7 +90,7 @@ Development uses SQLite by default. Emails (verification and password reset link
 | Parking Partner | vendor@tpms.com | vendor123 |
 | User | user@tpms.com | user123 |
 | Field Officer | police@tpms.com | police123 |
-| Gate Attendant (works for the demo partner) | gate@tpms.com | gate1234 |
+| Gate Attendant (works for the demo partner) | gate@tpms.com | gate12345 |
 
 ## Languages
 
