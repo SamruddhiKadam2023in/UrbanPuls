@@ -182,3 +182,59 @@ def revenue_report(period: Literal["day", "week", "month"] = "day",
         return Response(pdf, media_type="application/pdf",
                         headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
     return {"period": period, "start": start, "end": end, "rows": data, "totals": totals}
+
+
+# ── Parking Partner home ──────────────────────────────────────────────────────
+@router.get("/today")
+def today_summary(db: Session = Depends(get_db), user: User = Depends(vendor_or_admin)):
+    """Everything a Parking Partner needs at a glance: today's takings, cars in, arrivals, lot setup issues."""
+    now = utcnow()
+    today = to_local(now).date()
+    since = datetime.combine(today, time.min, LOCAL_TZ)
+
+    zones_q = db.query(ParkingZone)
+    if user.role != UserRole.admin:
+        zones_q = zones_q.filter(ParkingZone.vendor_id == user.id)
+    zones = zones_q.order_by(ParkingZone.id).all()
+
+    bookings = _scope(db.query(Booking), db, user)
+    done = bookings.filter(Booking.status == BookingStatus.completed, Booking.checked_out_at >= since).all()
+    created = bookings.filter(Booking.created_at >= since).all()
+    no_shows = bookings.filter(Booking.status == BookingStatus.no_show, Booking.start_time >= since).count()
+    arriving = bookings.filter(Booking.status == BookingStatus.reserved,
+                               Booking.start_time <= now + timedelta(hours=2)).order_by(Booking.start_time).limit(10).all()
+
+    held = bs.held_slot_ids_now(db, [z.id for z in zones]) if zones else set()
+    lots = []
+    for z in zones:
+        active = [s for s in z.slots if s.is_active]
+        parked = sum(1 for s in active if s.is_occupied)
+        reserved = sum(1 for s in active if not s.is_occupied and s.id in held)
+        lots.append({"zone_id": z.id, "name": z.name, "is_active": z.is_active, "total": len(active),
+                     "parked": parked, "reserved": reserved, "free": len(active) - parked - reserved})
+
+    issues = []
+    for z in zones:
+        if not z.upi_id:
+            issues.append({"zone_id": z.id, "zone": z.name, "issue": "no_upi"})
+        if not z.is_active:
+            issues.append({"zone_id": z.id, "zone": z.name, "issue": "hidden"})
+
+    cash = sum(b.final_amount or 0 for b in done if b.payment_method == PaymentMethod.cash)
+    upi = sum(b.final_amount or 0 for b in done if b.payment_method == PaymentMethod.upi)
+    return {
+        "date": today.isoformat(),
+        "totals": {
+            "revenue": round(cash + upi, 2), "cash": round(cash, 2), "upi": round(upi, 2),
+            "completed": len(done),
+            "reservations": sum(1 for b in created if not b.is_walk_in),
+            "walk_ins": sum(1 for b in created if b.is_walk_in),
+            "no_shows": no_shows,
+        },
+        "parked_now": sum(l["parked"] for l in lots),
+        "free_now": sum(l["free"] for l in lots),
+        "arriving": [{"id": b.id, "vehicle_number": b.vehicle_number, "zone_id": b.zone_id, "zone_name": b.zone.name,
+                      "slot_number": b.slot.slot_number, "start_time": b.start_time} for b in arriving],
+        "lots": lots,
+        "issues": issues,
+    }

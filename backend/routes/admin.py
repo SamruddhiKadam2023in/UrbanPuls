@@ -4,8 +4,13 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from datetime import datetime, time
+
 from core.database import get_db
 from core.security import get_admin_user, hash_password, validate_password
+from core.timeutil import utcnow, to_local, LOCAL_TZ
+from models.booking import Booking, BookingStatus, Complaint, ComplaintStatus
+from models.parking import ParkingZone
 from models.user import User, UserRole
 from schemas import UserOut
 from services.notify import notify
@@ -79,3 +84,35 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), a
     db.commit()
     db.refresh(user)
     return user
+
+
+# ── Admin home ────────────────────────────────────────────────────────────────
+@router.get("/summary")
+def admin_summary(db: Session = Depends(get_db), _: User = Depends(get_admin_user)):
+    """What needs an administrator's attention, plus platform totals for today."""
+    since = datetime.combine(to_local(utcnow()).date(), time.min, LOCAL_TZ)
+    role_counts = dict(db.query(User.role, func.count(User.id)).filter(User.is_active.is_(True)).group_by(User.role).all())
+    revenue = db.query(func.coalesce(func.sum(Booking.final_amount), 0.0)) \
+        .filter(Booking.status == BookingStatus.completed, Booking.checked_out_at >= since).scalar()
+    return {
+        "attention": {
+            "pending_complaints": db.query(Complaint).filter(Complaint.status == ComplaintStatus.pending).count(),
+            "partner_requests": db.query(User).filter(User.vendor_requested.is_(True), User.role == UserRole.user).count(),
+            "verified_open": db.query(Complaint).filter(Complaint.status == ComplaintStatus.verified).count(),
+            "no_shows_today": db.query(Booking).filter(Booking.status == BookingStatus.no_show, Booking.start_time >= since).count(),
+            "unverified_users": db.query(User).filter(User.email_verified.is_(False), User.is_active.is_(True)).count(),
+        },
+        "today": {
+            "bookings": db.query(Booking).filter(Booking.created_at >= since).count(),
+            "parked_now": db.query(Booking).filter(Booking.status == BookingStatus.checked_in).count(),
+            "revenue": float(revenue or 0),
+            "complaints": db.query(Complaint).filter(Complaint.created_at >= since).count(),
+        },
+        "platform": {
+            "users": role_counts.get(UserRole.user, 0),
+            "partners": role_counts.get(UserRole.vendor, 0),
+            "officers": role_counts.get(UserRole.police, 0),
+            "admins": role_counts.get(UserRole.admin, 0),
+            "zones": db.query(ParkingZone).filter(ParkingZone.is_active.is_(True)).count(),
+        },
+    }

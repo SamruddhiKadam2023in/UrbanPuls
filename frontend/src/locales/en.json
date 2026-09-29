@@ -34,6 +34,25 @@
     "users": "Users",
     "wants_vendor": "Wants to be a partner"
   },
+  "admin_home": {
+    "all_clear": "All caught up. Nothing is waiting for you.",
+    "awaiting_officers": "Verified, waiting for Field Officers",
+    "awaiting_officers_hint": "Follow up if these sit too long",
+    "bookings": "Bookings made",
+    "drivers": "Drivers",
+    "lots": "Active lots",
+    "new_complaints": "New complaints",
+    "partner_requests": "Parking Partner requests",
+    "partner_requests_hint": "Approve lot owners so they can add their lots",
+    "platform": "Platform",
+    "revenue": "Collected by partners",
+    "review_complaints": "Complaints to review",
+    "review_complaints_hint": "Verify or reject reports from drivers",
+    "subtitle": "What needs your attention across TPMS",
+    "today": "Today",
+    "todo": "To do",
+    "unverified": "{{n}} not verified yet"
+  },
   "analytics": {
     "bookings": "Bookings",
     "complaint_status": "Complaint status",
@@ -397,7 +416,9 @@
     "light_mode": "Light mode",
     "logout": "Logout",
     "map": "Live Map",
+    "park_a_car": "Park a car",
     "police": "Enforcement",
+    "reports": "Reports",
     "yolo": "YOLO AI",
     "zones": "Zones"
   },
@@ -409,6 +430,33 @@
     "mark_all": "Mark all read",
     "summary": "{{unread}} unread · {{total}} total",
     "title": "Notifications"
+  },
+  "officer_home": {
+    "all": "See all on map",
+    "clear": "Nothing waiting. All verified complaints are resolved.",
+    "oldest": "Oldest waiting",
+    "open": "Open complaints",
+    "open_map": "Open the enforcement map",
+    "queue": "Next to handle",
+    "resolved_today": "Resolved today",
+    "subtitle": "Verified complaints waiting for action on the ground"
+  },
+  "partner_home": {
+    "arriving": "Arriving in the next 2 hours",
+    "bookings_walkins": "{{r}} booked · {{w}} walk-in",
+    "cash_upi": "Cash {{cash}} · UPI {{upi}}",
+    "collected_today": "Collected today",
+    "fix_title": "Needs your attention",
+    "free_now": "Free slots now",
+    "hidden": "This lot is hidden from the map, so nobody can book it.",
+    "lots": "Your lots right now",
+    "manage_lots": "Manage lots",
+    "no_arrivals": "No bookings due in the next 2 hours.",
+    "no_upi": "No UPI ID: customers can only pay cash. Add one to show a payment QR at checkout.",
+    "open_gate": "Open the Gate screen",
+    "parked_now": "Cars parked now",
+    "subtitle": "Here's today at your parking lots",
+    "visits_today": "Visits completed"
   },
   "police": {
     "evidence": "Evidence",

@@ -20,7 +20,7 @@ const DYNAMIC = {
   complaint_status: ['pending', 'verified', 'rejected', 'resolved'],
   'complaints.types': ['illegal_parking', 'road_blockage', 'signal_malfunction', 'accident', 'vendor_issue'],
   roles: ['user', 'vendor', 'police', 'admin'],
-  nav: ['map', 'bookings', 'gate', 'zones', 'complaints', 'police', 'yolo', 'analytics', 'dashboard', 'admin', 'emergency'],
+  nav: ['map', 'bookings', 'gate', 'zones', 'reports', 'complaints', 'police', 'yolo', 'analytics', 'dashboard', 'admin', 'emergency'],
   emergency: ['police', 'police_sub', 'ambulance', 'ambulance_sub', 'fire', 'fire_sub'],
 }
 

@@ -6,22 +6,28 @@ import i18n from '../../i18n'
 import api from '../../utils/api'
 import { useTranslation } from 'react-i18next'
 import NotificationBell from './NotificationBell'
-import { hasRole } from '../../utils/roles'
 
-// area: only shown to roles allowed in that area (see utils/roles.js)
-const NAV = [
-  { to: '/map',        icon: '🗺️', key: 'nav.map',        label: 'Live Map'   },
-  { to: '/bookings',   icon: '📋', key: 'nav.bookings',   label: 'Bookings'   },
-  { to: '/gate',       icon: '🚧', key: 'nav.gate',       label: 'Gate',       area: 'gate' },
-  { to: '/zones',      icon: '🅿', key: 'nav.zones',      label: 'Zones',      area: 'zones' },
-  { to: '/complaints', icon: '⚠️', key: 'nav.complaints', label: 'Complaints' },
-  { to: '/police',     icon: '🦺', key: 'nav.police',     label: 'Enforcement', area: 'police' },
-  { to: '/detection',  icon: '🔍', key: 'nav.yolo',       label: 'YOLO AI',    area: 'detection' },
-  { to: '/analytics',  icon: '📊', key: 'nav.analytics',  label: 'Analytics',  area: 'staff' },
-  { to: '/dashboard',  icon: '⚙️', key: 'nav.dashboard',  label: 'Dashboard',  area: 'staff' },
-  { to: '/admin',      icon: '🛡', key: 'nav.admin',      label: 'Admin',      area: 'admin' },
-  { to: '/emergency',  icon: '🚨', key: 'nav.emergency',  label: 'Emergency'  },
-]
+const L = {
+  map:        { to: '/map',        icon: '🗺️', key: 'nav.map',        label: 'Live Map' },
+  bookings:   { to: '/bookings',   icon: '📋', key: 'nav.bookings',   label: 'Bookings' },
+  complaints: { to: '/complaints', icon: '⚠️', key: 'nav.complaints', label: 'Complaints' },
+  emergency:  { to: '/emergency',  icon: '🚨', key: 'nav.emergency',  label: 'Emergency' },
+  gate:       { to: '/gate',       icon: '🚧', key: 'nav.gate',       label: 'Gate' },
+  zones:      { to: '/zones',      icon: '🅿', key: 'nav.zones',      label: 'Zones' },
+  reports:    { to: '/analytics',  icon: '📊', key: 'nav.reports',    label: 'Reports' },
+  police:     { to: '/police',     icon: '🦺', key: 'nav.police',     label: 'Enforcement' },
+  detection:  { to: '/detection',  icon: '🔍', key: 'nav.yolo',       label: 'YOLO AI' },
+  dashboard:  { to: '/dashboard',  icon: '⚙️', key: 'nav.dashboard',  label: 'Dashboard' },
+  admin:      { to: '/admin',      icon: '🛡', key: 'nav.admin',      label: 'Admin' },
+}
+
+// Each role's own work comes first. Staff keep the driver features under "Park a car".
+const NAV_BY_ROLE = {
+  user:   { main: [L.map, L.bookings, L.complaints, L.emergency], more: [] },
+  vendor: { main: [L.gate, L.zones, L.reports],                  more: [L.map, L.bookings, L.complaints, L.emergency] },
+  police: { main: [L.police, L.detection],                       more: [L.map, L.bookings, L.complaints, L.emergency] },
+  admin:  { main: [L.dashboard, L.admin, L.police, L.zones, L.reports, L.detection], more: [L.map, L.bookings, L.complaints, L.emergency] },
+}
 
 const LANGS = [
   { code: 'en', label: 'EN',  full: 'English', emoji: '🇬🇧' },
@@ -39,9 +45,11 @@ export default function Navbar() {
   const [langOpen,    setLangOpen]    = useState(false)
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('lang') || 'en')
   const [darkMode,    setDarkMode]    = useState(localStorage.getItem('theme') !== 'light')
+  const [moreOpen,    setMoreOpen]    = useState(false)
   const langRef = useRef(null)
+  const moreRef = useRef(null)
 
-  const links = NAV.filter(l => !l.area || hasRole(user, l.area))
+  const { main: links, more } = NAV_BY_ROLE[user?.role] || NAV_BY_ROLE.user
 
   const isActive = p => location.pathname === p
   const handleLogout = () => { dispatch(logout()); navigate('/login') }
@@ -55,7 +63,10 @@ export default function Navbar() {
   }
 
   useEffect(() => {
-    const handler = (e) => { if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false) }
+    const handler = (e) => {
+      if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false)
+      if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false)
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
@@ -106,6 +117,25 @@ export default function Navbar() {
               <span style={{ fontSize: '13px' }}>{icon}</span>{t(key, label)}
             </Link>
           ))}
+          {more.length > 0 && (
+            <div ref={moreRef} style={{ position: 'relative' }}>
+              <button onClick={() => setMoreOpen(v => !v)} aria-expanded={moreOpen}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
+                  color: more.some(l => isActive(l.to)) ? '#60a5fa' : 'var(--c-text2)', background: moreOpen || more.some(l => isActive(l.to)) ? 'rgba(59,130,246,0.12)' : 'transparent' }}>
+                🚗 {t('nav.park_a_car', 'Park a car')} ▾
+              </button>
+              {moreOpen && (
+                <div style={{ position: 'fixed', marginTop: '6px', background: 'var(--c-surface)', border: '1px solid var(--c-border2)', borderRadius: '12px', padding: '6px', minWidth: '180px', boxShadow: '0 12px 40px rgba(0,0,0,0.5)', zIndex: 9999 }}>
+                  {more.map(({ to, icon, key, label }) => (
+                    <Link key={to} to={to} onClick={() => setMoreOpen(false)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', textDecoration: 'none', color: isActive(to) ? '#60a5fa' : 'var(--c-text)', background: isActive(to) ? 'rgba(59,130,246,0.12)' : 'transparent' }}>
+                      <span>{icon}</span>{t(key, label)}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right controls */}
