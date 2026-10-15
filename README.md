@@ -1,4 +1,4 @@
-# 🅿 UrbanPuls : Traffic & Parking Management System
+# 🅿️ UrbanPuls — Traffic & Parking Management System
 
 A full-stack web app for city parking, built for Mumbai. Drivers reserve car or two-wheeler parking and **pay at the gate** only for the time they actually park. Parking lot owners run their gates from a phone or tablet. Citizens report illegal parking, and a YOLO model finds vehicles standing in no-parking areas.
 
@@ -47,6 +47,8 @@ Available in **English, हिंदी and मराठी**.
 - Traffic density charts and busiest / quietest hours per lot
 - Emergency page with one-tap calls to police (100), ambulance (108) and fire (101)
 
+---
+
 ## Who uses it
 
 | Role | Who they are | What they do | Their main screens |
@@ -55,11 +57,13 @@ Available in **English, हिंदी and मराठी**.
 | 🏢 **Parking Partner** | Owner or operator of a parking lot (needs admin approval) | Run the gate, manage lots and prices, add gate staff, see revenue | Gate, Zones, Reports, Staff |
 | 🚧 **Gate Attendant** | Staff added by a Parking Partner | Check cars in and out and record payments for their employer's lots only | Gate |
 | 🦺 **Field Officer** | Staff who act on the ground (your team, lot security, or traffic police) | Resolve verified complaints, run violation detection | Enforcement, Detection, Cameras |
-| 🛡 **Admin** | The operator of UrbanPuls | Verify complaints, approve partners, manage users and staff accounts | Dashboard, Admin |
+| 🛡️ **Admin** | The operator of UrbanPuls | Verify complaints, approve partners, manage users and staff accounts | Dashboard, Admin |
 
 Staff roles can still park like drivers from the **"Park a car"** menu. Nobody can make themselves an admin or partner at sign-up.
 
 > In the code and database, Parking Partners are the `vendor` role and Field Officers the `police` role.
+
+---
 
 ## Quick start (Docker)
 
@@ -73,7 +77,7 @@ docker compose up --build -d
 docker compose exec backend python seed.py  # demo accounts, 5 Mumbai lots, traffic data
 ```
 
-Open **http://localhost:5173** and use the "Sign in as…" buttons on the sign-in page.
+Open **http://localhost:5173** and use the "Sign in as…" buttons on the sign-in page (accounts listed under [Demo accounts](#demo-accounts)).
 
 This starts PostgreSQL, Redis, the FastAPI backend (migrations run automatically) and the React app behind nginx. Only port **5173** is published.
 
@@ -83,6 +87,8 @@ docker compose down              # stop (data is kept in Docker volumes)
 ```
 
 **Optional:** for a dark street map, get a free key from [MapTiler](https://cloud.maptiler.com) (allowed origin: `localhost`), put `VITE_MAPTILER_KEY=...` in a `.env` file next to `docker-compose.yml`, and run `docker compose up --build -d` again. Without a key the map uses OpenStreetMap tiles.
+
+---
 
 ## Running without Docker
 
@@ -113,6 +119,8 @@ Open **http://localhost:5173**. API docs: **http://localhost:8000/docs**.
 
 If port 8000 is already taken, start the backend with `--port 8001` and the frontend with `VITE_API_TARGET=http://localhost:8001 npm run dev` (PowerShell: `$env:VITE_API_TARGET="http://localhost:8001"; npm run dev`).
 
+---
+
 ## Demo accounts
 
 Created by `seed.py` (never in production). The sign-in page has one-click buttons for them.
@@ -126,6 +134,8 @@ Created by `seed.py` (never in production). The sign-in page has one-click butto
 | Admin | admin@urbanpuls.com | admin123 |
 
 A good first test: sign in as the driver in one window and the Parking Partner in a private window. Reserve a slot as the driver, then check it in on the partner's Gate screen; the driver's page updates live.
+
+---
 
 ## How it works
 
@@ -182,6 +192,8 @@ A vehicle in a photo is not illegal by itself; it depends on *where* it stands. 
 
 To re-create the model or train your own on labelled photos, see `backend/yolo/train_yolo.py`.
 
+---
+
 ## Tech stack
 
 | Layer | Technology |
@@ -194,9 +206,11 @@ To re-create the model or train your own on labelled photos, see `backend/yolo/t
 | Serving | nginx (static app + reverse proxy for the API and WebSocket), Docker Compose |
 | Testing | pytest (85 tests, run on SQLite and PostgreSQL) |
 
+---
+
 ## Project structure
 
-```
+```text
 traffic-parking-ps/
 ├── backend/
 │   ├── core/            settings, database, security (JWT, roles), rate limiting, time helpers
@@ -222,6 +236,8 @@ traffic-parking-ps/
 └── start.bat            start backend + frontend locally (Windows)
 ```
 
+---
+
 ## Configuration
 
 Backend settings are environment variables in `backend/.env`; see `backend/.env.example` for all of them. The defaults work for local use. Useful ones:
@@ -244,13 +260,15 @@ Frontend build settings (in `frontend/.env.local` for `npm run dev`, or a `.env`
 | `VITE_OPERATOR_NAME`, `VITE_CONTACT_EMAIL`, `VITE_CITY` | Shown on the landing, privacy and terms pages |
 | `VITE_API_TARGET` | Backend address for `npm run dev` (default `http://localhost:8000`) |
 
+---
+
 ## Development
 
 **Tests**
 
 ```bash
 cd backend
-pytest                                   # SQLite
+pytest                                      # SQLite
 TEST_DATABASE_URL=postgresql://... pytest   # PostgreSQL
 ```
 
@@ -279,6 +297,8 @@ Server notifications and emails are translated in `backend/services/messages.py`
 python create_admin.py --email you@example.com --name "Your Name"
 # Docker: docker compose exec backend python create_admin.py --email ... --name "..."
 ```
+
+---
 
 ## License
 
