@@ -1,4 +1,4 @@
-# 🅿️ UrbanPuls — Traffic & Parking Management System
+# 🅿️ UrbanPuls : Traffic & Parking Management System
 
 A full-stack web app for city parking, built for Mumbai. Drivers reserve car or two-wheeler parking and **pay at the gate** only for the time they actually park. Parking lot owners run their gates from a phone or tablet. Citizens report illegal parking, and a YOLO model finds vehicles standing in no-parking areas.
 
